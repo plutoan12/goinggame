@@ -1,0 +1,32 @@
+import { readFile } from "node:fs/promises";
+import { releaseConfig as config } from "../release-config.js";
+const root = new URL("../", import.meta.url);
+const read = (file) => readFile(new URL(file, root), "utf8");
+const capacitor = JSON.parse(await read("capacitor.config.json"));
+const manifest = await read("android/app/src/main/AndroidManifest.xml");
+const plist = await read("ios/App/App/Info.plist");
+const policy = await read("privacy.html");
+const page = await read("index.html");
+const blockers = [];
+const gradle = await read("android/app/build.gradle");
+const xcode = await read("ios/App/App.xcodeproj/project.pbxproj");
+const namespace = gradle.match(/namespace\s*=\s*"([^"]+)"/)?.[1];
+const androidId = gradle.match(/applicationId\s+"([^"]+)"/)?.[1];
+const iosIds = [...xcode.matchAll(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g)].map((match) => match[1]);
+if (namespace !== capacitor.appId || androidId !== capacitor.appId || !iosIds.length || iosIds.some((id) => id !== capacitor.appId)) blockers.push("네이티브 앱 식별자가 capacitor.config.json과 일치하지 않음");
+if (capacitor.appId.startsWith("com.example.")) blockers.push("고유 앱 ID 확정 및 iOS/Android 식별자 일치 필요");
+if (config.audience === "unset") blockers.push("주 이용 연령 / 스토어 대상 연령 결정 필요");
+if (!/^https:\/\/[^\s]+$/.test(config.privacyUrl)) blockers.push("검토 완료된 개인정보처리방침의 공개 HTTPS URL 필요");
+if (policy.includes("출시 전 검토 초안")) blockers.push("개인정보처리방침 초안 검토·확정 필요");
+if (page.includes("앱 준비 중") || page.includes("광고 배너 연결 위치")) blockers.push("출시 화면의 개발용 준비 문구·광고 자리 표시 정리 필요");
+if (!config.publisher || !config.supportEmail) blockers.push("운영자 / 문의 이메일 필요");
+if (config.ads.enabled) {
+  if (!config.ads.audienceReviewed || config.audience !== "general") blockers.push("광고 대상 연령 처리 미검토 (아동 대상 경로 미구현)");
+  if (config.ads.testMode) blockers.push("출시 광고에 테스트 모드 사용 중");
+  if (!/ca-app-pub-\d{16}\/\d{10}/.test(config.ads.androidRewardedId) || !/ca-app-pub-\d{16}\/\d{10}/.test(config.ads.iosRewardedId)) blockers.push("실제 플랫폼별 보상형 광고 단위 ID 필요");
+  if ([manifest, plist, config.ads.androidRewardedId, config.ads.iosRewardedId].some((value) => value.includes("3940256099942544"))) blockers.push("공식 테스트 광고 ID를 운영자 AdMob ID로 교체해야 함");
+}
+console.log(`앱: ${config.appName} / 운영자: ${config.publisher} / 광고: ${config.ads.enabled ? "켜짐" : "꺼짐"}`);
+for (const blocker of blockers) console.log(`BLOCKED ${blocker}`);
+console.log("이 점검은 정적 설정 검사입니다. 서명·기기 테스트·SDK 통신·스토어 심사 통과를 인증하지 않습니다.");
+process.exitCode = blockers.length ? 1 : 0;

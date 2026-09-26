@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#c0d2c6" />
+    <title>열두 수호대 · 십이지신 정렬 퍼즐</title>
+    <link rel="preload" href="./assets/guardian-atlas-v3.png" as="image" />
+    <link rel="icon" href="./assets/app-icon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="./assets/app-icon.png" />
+    <link rel="stylesheet" href="./style.css?v=mobile-1" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">우리 곁의 작은 수호신</p>
+            <h1>열두 수호대</h1>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="rankings" class="icon-button" aria-label="이 기기 순위">
+            순위
+          </button>
+          <button
+            id="sound"
+            class="icon-button"
+            aria-label="소리 켜기"
+            aria-pressed="false"
+          >
+            ♫</button
+          ><button id="help" class="icon-button" aria-label="게임 방법">
+            ?
+          </button>
+        </div>
+      </header>
+      <section class="game-heading">
+        <div>
+          <span class="level-badge" id="level">1단계 · 입문</span>
+          <h2>같은 친구끼리, 나란히.</h2>
+          <p>열두 수호대와 고양이·병아리의 긴 보드 도전.</p>
+        </div>
+        <label class="mode-label"
+          >플레이 모드<select id="mode">
+            <option value="blind">수호대 여정</option>
+            <option value="practice">연습 · 모두 공개</option>
+          </select></label
+        >
+      </section>
+      <nav id="stages" class="stages" aria-label="난이도 선택"></nav>
+      <div class="stage-info">
+        <strong id="dimensions">6열 × 4칸 · 4종</strong
+        ><span id="stageDescription"></span>
+      </div>
+      <div class="run-status">
+        <label class="challenge-label"
+          >도전 방식
+          <select id="challenge">
+            <option value="moves">이동 횟수 제한</option>
+            <option value="timed">타임어택</option>
+          </select></label
+        >
+        <div class="limit-counter">
+          <span id="limitLabel">남은 이동</span><strong id="remaining"></strong
+          ><small id="limitDetail"></small
+          ><progress
+            id="limitBar"
+            max="100"
+            value="100"
+            aria-label="남은 이동 비율"
+          ></progress>
+        </div>
+        <div class="limit-actions">
+          <button id="pause" hidden>Ⅱ 잠시 멈춤</button
+          ><button id="gameStatus">게임오버 기준 보기</button>
+        </div>
+      </div>
+      <section class="board-frame" aria-label="십이지신 정렬 게임">
+        <div class="board-top">
+          <span><i></i><span id="modeName">수호대 여정</span></span
+          ><span
+            >완성 <b id="complete">0 / 4</b><span class="divider">|</span>이동
+            <b id="moves">0</b></span
+          >
+        </div>
+        <div
+          class="board-viewport"
+          id="boardViewport"
+          tabindex="0"
+          role="region"
+          aria-label="게임판, 큰 보드는 좌우로 스크롤하세요"
+        >
+          <div class="board" id="board" aria-label="번호가 붙은 세로 칸"></div>
+        </div>
+        <div class="board-bottom">
+          <span class="mini-pets" aria-hidden="true"></span
+          ><span>열두 <strong>수호대</strong></span
+          ><span class="board-note">십이지신 정렬 퍼즐</span>
+        </div>
+      </section>
+      <p id="message" class="message" role="status" aria-live="polite">
+        옮길 동물의 칸을 누르고, 도착할 칸을 눌러 주세요.
+      </p>
+      <section class="tools" aria-label="게임 도구">
+        <button id="undo">
+          <span aria-hidden="true">↶</span><strong>되돌리기</strong
+          ><small>마지막 한 수</small>
+        </button>
+        <button id="extra">
+          <span aria-hidden="true">＋</span><strong>보조 칸</strong
+          ><small>1개 남음</small>
+        </button>
+        <button id="peek">
+          <span aria-hidden="true">◉</span><strong>한 열 공개</strong
+          ><small>2개 남음</small>
+        </button>
+      </section>
+      <div class="supply-actions">
+        <button id="supplies">▷ 광고 보상 · 아이템 충전</button
+        ><button id="restart">↻ 다시 하기</button>
+      </div>
+      <footer>
+        <span>맨 위 동물을 꾹 잡아 끌거나, 출발·도착 열을 차례로 눌러요.</span
+        ><button id="newGame">새로운 배치 →</button>
+      </footer>
+      <details class="guardian-guide">
+        <summary>
+          수호대와 친구들 만나기 <span>12 수호동물 + 고양이·병아리</span>
+        </summary>
+        <div id="guardianList" class="guardian-list"></div>
+      </details>
+      <!-- Reserved for a future native banner; no empty ad box in the game. -->
+      <aside data-ad-slot="menu-banner" hidden></aside>
+      <p class="prototype-note">열두 수호대 · 같은 동물끼리, 나란히.</p>
+      <nav class="privacy-links" aria-label="앱 정보">
+        <a href="./privacy.html">개인정보처리방침</a>
+        <button id="privacySettings">광고 개인정보 설정</button>
+        <a href="mailto:qkdqor19@icloud.com">문의하기</a>
+      </nav>
+      <p class="prototype-note">원웨이컴퍼니 · qkdqor19@icloud.com</p>
+    </main>
+    <dialog id="dialog" aria-labelledby="dialogTitle">
+      <form method="dialog">
+        <button class="dialog-close" aria-label="닫기">×</button>
+      </form>
+      <span class="dialog-pet" aria-hidden="true"></span>
+      <p class="eyebrow" id="dialogKicker">놀이 방법</p>
+      <h2 id="dialogTitle">같은 친구를 모아 주세요</h2>
+      <div id="dialogBody"></div>
+      <button class="primary" id="dialogAction">알겠어요!</button>
+      <div id="dialogOptions"></div>
+    </dialog>
+    <dialog id="adDialog" aria-labelledby="adTitle">
+      <p class="eyebrow">DEV PREVIEW · 실제 광고 아님</p>
+      <h2 id="adTitle">보상형 광고 테스트</h2>
+      <p data-ad-placement></p>
+      <p>
+        로컬 브라우저 전용 동작 확인 화면이에요.<br />실제 광고 시청이나 수익은
+        발생하지 않아요.
+      </p>
+      <form method="dialog" class="ad-test-actions">
+        <button class="primary" value="earned">보상 완료 테스트</button>
+        <button class="secondary" value="cancelled">시청 취소 테스트</button>
+        <button class="secondary" value="unavailable">
+          불러오기 실패 테스트
+        </button>
+      </form>
+    </dialog>
+    <script type="module" src="./game.js?v=mobile-1"></script>
+  </body>
+</html>
