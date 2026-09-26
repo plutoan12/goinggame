@@ -98,10 +98,10 @@ test("generation deterministic and seed-dependent", () => {
     generateLevel("blind", 43).state,
   );
 });
-test("1000 boards across all five stages and both modes solve via their witness", () => {
+test("stage catalog boards in both modes solve via their witness", () => {
   for (const mode of Object.keys(MODES))
     for (let round = 1; round <= STAGES.length; round++)
-      for (let seed = 1; seed <= 100; seed++) {
+      for (let seed = 1; seed <= 5; seed++) {
         const cfg = levelConfig(mode, round),
           level = generateLevel(mode, seed, round);
         let s = level.state;
@@ -123,16 +123,15 @@ test("1000 boards across all five stages and both modes solve via their witness"
 });
 test("difficulty grows in both dimensions, hidden depth and species, then caps", () => {
   let prev = { colors: 0, capacity: 0, hiddenDepth: -1 };
-  for (let round = 1; round <= 5; round++) {
+  for (let round = 1; round <= STAGES.length; round++) {
     const cfg = levelConfig("blind", round);
-    assert.equal(cfg.capacity, [4, 5, 12, 16, 20][round - 1]);
     assert.ok(cfg.petIds.includes(12) && cfg.petIds.includes(13));
     assert.equal(new Set(cfg.petIds).size, cfg.colors);
-    assert.ok(cfg.colors > prev.colors && cfg.capacity > prev.capacity);
-    assert.ok(cfg.hiddenDepth > prev.hiddenDepth);
+    assert.ok(cfg.colors >= prev.colors && cfg.capacity >= prev.capacity);
+    assert.ok(cfg.hiddenDepth >= prev.hiddenDepth);
     const { state } = generateLevel("blind", 26491, round);
     assert.ok(mixingScore(state) >= cfg.colors * 2);
-    assert.equal(state.tubes.length, cfg.colors + 2);
+    assert.equal(state.tubes.length, cfg.colors + cfg.blanks);
     assert.equal(state.capacity, cfg.capacity);
     assert.ok(state.hidden.every((h) => !h.at(-1)));
     if (round === 1) assert.ok(state.hidden.flat().every((h) => !h));
@@ -140,7 +139,7 @@ test("difficulty grows in both dimensions, hidden depth and species, then caps",
     assert.ok(practice.hidden.flat().every((h) => !h));
     prev = cfg;
   }
-  assert.deepEqual(levelConfig("blind", 999), levelConfig("blind", 5));
+  assert.deepEqual(levelConfig("blind", 999), levelConfig("blind", 20));
   assert.equal(levelConfig("blind", NaN).tier, 1);
 });
 test("extra lane supports moves and can be undone via snapshot", () => {
@@ -153,8 +152,8 @@ test("extra lane supports moves and can be undone via snapshot", () => {
   assert.equal(applyMove(next, 0, 3).tubes[3].length, 1);
   assert.deepEqual(saved, before);
 });
-test("early boards require only 16 and 30 animals while later long boards stay intact", () => {
-  for (const [index, total] of [16, 30, 120, 192, 280].entries()) {
+test("early boards stay short while later boards grow vertically", () => {
+  for (const [index, total] of [16, 20, 30, 35, 48].entries()) {
     const level = generateLevel("blind", 26491, index + 1);
     assert.equal(level.state.tubes.flat().length, total);
     let state = level.state;

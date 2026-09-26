@@ -22,7 +22,7 @@ test("old early boards become fresh short boards without mutating original save"
     assert.deepEqual(old,before);
     assert.equal(result.saved.round,round);
     assert.equal(result.saved.seed,42);
-    assert.equal(result.saved.state.tubes.flat().length,round === 1 ? 16 : 30);
+    assert.equal(result.saved.state.tubes.flat().length,round === 1 ? 16 : 20);
     assert.equal(result.saved.moves,0);
     assert.equal(result.saved.extra,false);
     assert.deepEqual(result.saved.history,[]);

@@ -6,6 +6,15 @@
  * hidden-aware completion, mixed-pet stacking; reverse-scramble generator added.
  * Tubes are stored bottom-to-top. Hidden flags never affect tile identity.
  */
+import { levelConfig } from "./stage-config.js";
+
+export { STAGES, levelConfig } from "./stage-config.js";
+
+export const MODES = Object.freeze({
+  blind: Object.freeze({ hidden: true }),
+  practice: Object.freeze({ hidden: false }),
+});
+
 export function cloneState(s) {
   const next = { capacity: s.capacity, tubes: s.tubes.map((t) => t.slice()) };
   if (s.hidden) next.hidden = s.hidden.map((h) => h.slice());
@@ -72,36 +81,6 @@ export function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-export const MODES = {
-  blind: { hidden: true },
-  practice: { hidden: false },
-};
-export const STAGES = [
-  { name: "입문", colors: 4, capacity: 4, hiddenDepth: 0 },
-  { name: "산책", colors: 6, capacity: 5, hiddenDepth: 2 },
-  { name: "탐험", colors: 10, capacity: 12, hiddenDepth: 3 },
-  { name: "도전", colors: 12, capacity: 16, hiddenDepth: 4 },
-  { name: "수호왕", colors: 14, capacity: 20, hiddenDepth: 5 },
-];
-export function levelConfig(mode = "blind", round = 1) {
-  const tier = Math.min(
-    STAGES.length,
-    Math.max(1, Number.isSafeInteger(round) ? round : 1),
-  );
-  return {
-    ...STAGES[tier - 1],
-    tier,
-    blanks: 2,
-    steps: tier * 180,
-    hidden: MODES[mode]?.hidden ?? true,
-    // Guest animals are available immediately; the twelve guardians join in order.
-    petIds: [12, 13, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].slice(
-      0,
-      STAGES[tier - 1].colors,
-    ),
-  };
-}
-
 // Every reverse step has an exact legal forward inverse (single-tile moves).
 // Return that witness too, so tests can verify every generated board to completion.
 export function generateLevel(mode = "blind", seed = 1, round = 1) {

@@ -1,8 +1,8 @@
 import { isWin, STAGES } from "./engine.js";
 
 export const PROGRESS_KEY = "twelve-guardians-progress-v1";
-const tier = (round) => Number.isSafeInteger(round) && round > 0
-  ? Math.min(STAGES.length, round) : null;
+const tier = (round) => Number.isSafeInteger(round) && round > 0 && round <= STAGES.length
+  ? round : null;
 
 // Local sequential progress, shared by journey and practice. Not an anti-cheat server.
 export function createProgression(storage) {
