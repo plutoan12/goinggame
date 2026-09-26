@@ -313,10 +313,23 @@ select {
   display: block;
   width: 100%;
   height: 100%;
-  background-image: url("./assets/guardian-atlas-v3.png");
+  background-image: url("./assets/pixel-guardian-atlas.png");
   background-size: 400% 400%;
   background-position: var(--sprite-x, 0%) var(--sprite-y, 0%);
   background-repeat: no-repeat;
+}
+.special-art {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  background-image: url("./assets/pixel-special-atlas.png");
+  background-size: 400% 200%;
+  background-position: var(--special-x, 0%) var(--special-y, 0%);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
 }
 .tools {
   position: sticky;
@@ -870,6 +883,9 @@ body {
   font-size: 10px;
 }
 .rule-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: -4px 2px 14px;
   padding: 9px 11px;
   border-left: 4px solid #6f8c72;
@@ -877,6 +893,28 @@ body {
   color: #53665a;
   font-size: 11px;
   line-height: 1.5;
+}
+.rule-summary .special-art {
+  width: 24px;
+  height: 24px;
+}
+.lane-number {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lane-rule-icons {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  display: flex;
+  align-items: center;
+}
+.lane-rule-icons .special-art {
+  width: 15px;
+  height: 15px;
+  margin-left: -3px;
 }
 .lane.marked-lane .rail {
   background-image: repeating-linear-gradient(135deg, #fffdf6 0 7px, #e8efd9 7px 14px);
@@ -886,11 +924,6 @@ body {
   filter: grayscale(0.65);
   opacity: 0.58;
   background: #d8d5d0;
-}
-.lane.sealed-lane .lane-number::after {
-  content: "🔒";
-  margin-left: 3px;
-  font-size: 10px;
 }
 .lane.seal-open .rail {
   outline: 2px solid #d8b45e;
@@ -941,6 +974,16 @@ body {
 }
 .empty-label {
   color: #728c75;
+}
+.empty-label .special-art {
+  width: 30px;
+  height: 30px;
+}
+.tile.hidden .special-art,
+.tile-back .special-art {
+  width: min(90%, 38px);
+  height: auto;
+  aspect-ratio: 1;
 }
 .tile {
   border-color: #fffdf2;

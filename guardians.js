@@ -15,3 +15,15 @@ export const GUARDIANS = [
   ["cat", "고양이", "#f6e5d1"],
   ["chick", "병아리", "#f6efc8"],
 ];
+
+// Fixed 4x2 atlas order. Keep this mapping stable for saved UI state and CSS.
+export const SPECIAL_SPRITES = Object.freeze({
+  question: 0,
+  goal: 1,
+  marked: 2,
+  sealed: 3,
+  unlocked: 4,
+  sparkle: 5,
+  selection: 6,
+  empty: 7,
+});

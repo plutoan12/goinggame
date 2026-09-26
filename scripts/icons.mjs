@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { readdir, mkdir } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
-const source = new URL("assets/app-icon-source.png", root).pathname;
+const source = new URL("assets/pixel-app-icon-source.png", root).pathname;
 const background = "#66ad82";
 await sharp(source).resize(1024, 1024).flatten({ background }).removeAlpha()
   .png().toFile(new URL("assets/app-icon.png", root).pathname);

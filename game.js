@@ -20,7 +20,10 @@ import { createProgression } from "./progression.js";
 import { createTutorial } from "./tutorial.js";
 import { createTutorialView } from "./tutorial-view.js";
 import { SAVE_KEY, validSavedGame } from "./saved-game.js";
-import { GUARDIANS as PETS } from "./guardians.js?v=tall-1";
+import {
+  GUARDIANS as PETS,
+  SPECIAL_SPRITES,
+} from "./guardians.js?v=pixel-1";
 import {
   createRun,
   outcome,
@@ -84,6 +87,15 @@ function petArt(id) {
   art.className = "pet-art";
   art.style.setProperty("--sprite-x", `${((id % 4) * 100) / 3}%`);
   art.style.setProperty("--sprite-y", `${(Math.floor(id / 4) * 100) / 3}%`);
+  art.setAttribute("aria-hidden", "true");
+  return art;
+}
+function specialArt(kind) {
+  const id = SPECIAL_SPRITES[kind];
+  const art = document.createElement("span");
+  art.className = `special-art special-${kind}`;
+  art.style.setProperty("--special-x", `${((id % 4) * 100) / 3}%`);
+  art.style.setProperty("--special-y", `${Math.floor(id / 4) * 100}%`);
   art.setAttribute("aria-hidden", "true");
   return art;
 }
@@ -306,7 +318,19 @@ function render() {
     cfg.hidden && cfg.hiddenDepth > 0
       ? `물음표 최대 ${cfg.hiddenDepth}단 · 한 칸을 같은 수호동물로 채워 주세요.`
       : "모든 그림을 보면서 같은 수호동물끼리 모아 보세요.";
-  $("ruleSummary").textContent = ruleSummary(rules, ruleProgress, stagePets());
+  const summary = $("ruleSummary");
+  const summaryIcon = rules.goalColor !== null
+    ? "goal"
+    : rules.marked.length
+      ? "marked"
+      : rules.sealedLane !== null
+        ? ruleProgress.sealOpened ? "unlocked" : "sealed"
+        : null;
+  summary.replaceChildren();
+  if (summaryIcon) summary.append(specialArt(summaryIcon));
+  const summaryText = document.createElement("span");
+  summaryText.textContent = ruleSummary(rules, ruleProgress, stagePets());
+  summary.append(summaryText);
   updateStageButtons();
   document.querySelectorAll(".guardian-card").forEach((card, index) => {
     card.classList.toggle("inactive", !cfg.petIds.includes(index));
@@ -337,7 +361,15 @@ function render() {
     lane.setAttribute("aria-pressed", selected === i);
     const number = document.createElement("span");
     number.className = "lane-number";
-    number.textContent = done ? "✓" : String(i + 1);
+    number.textContent = done ? "" : String(i + 1);
+    const ruleIcons = document.createElement("span");
+    ruleIcons.className = "lane-rule-icons";
+    if (done) ruleIcons.append(specialArt("sparkle"));
+    if (ruleView.markedColor !== null) ruleIcons.append(specialArt("marked"));
+    if (rules.sealedLane === i)
+      ruleIcons.append(specialArt(ruleProgress.sealOpened ? "unlocked" : "sealed"));
+    if (selected === i) ruleIcons.append(specialArt("selection"));
+    number.append(ruleIcons);
     const rail = document.createElement("span");
     rail.className = "rail";
     rail.setAttribute("aria-hidden", "true");
@@ -347,7 +379,7 @@ function render() {
       tile.className = `tile${hidden ? " hidden" : ""}${lastMove?.to === i && p === tube.length - 1 ? " arrived" : ""}${lastMove?.reveal && lastMove.from === i && p === tube.length - 1 ? " revealed" : ""}`;
       if (p === tube.length - 1 && !hidden) tile.classList.add("draggable-tile");
       // Never leak face-down identities into DOM text, titles, styles or attributes.
-      if (hidden) tile.textContent = "?";
+      if (hidden) tile.append(specialArt("question"));
       else {
         tile.style.setProperty("--pet-color", petFor(tube[p])[2]);
         const face = document.createElement("span");
@@ -357,7 +389,7 @@ function render() {
         if (tile.classList.contains("revealed")) {
           const back = document.createElement("span");
           back.className = "tile-back";
-          back.textContent = "?";
+          back.append(specialArt("question"));
           tile.append(back);
         }
       }
@@ -366,7 +398,7 @@ function render() {
     if (!tube.length) {
       const empty = document.createElement("span");
       empty.className = "empty-label";
-      empty.textContent = "빈 칸";
+      empty.append(specialArt("empty"));
       rail.append(empty);
     }
     const hint = document.createElement("span");
