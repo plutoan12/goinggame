@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test stage-config.test.mjs engine.test.mjs motion.test.mjs drag.test.mjs progression.test.mjs tutorial.test.mjs saved-game.test.mjs session.test.mjs leaderboard.test.mjs native-adapter.test.mjs",
+    "test": "node --test stage-config.test.mjs engine.test.mjs rules.test.mjs motion.test.mjs drag.test.mjs progression.test.mjs tutorial.test.mjs saved-game.test.mjs session.test.mjs leaderboard.test.mjs native-adapter.test.mjs",
     "postinstall": "node scripts/prepare-admob.mjs",
     "icons": "node scripts/icons.mjs",
     "release:check": "node scripts/release-check.mjs",
