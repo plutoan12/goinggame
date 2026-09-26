@@ -7,8 +7,9 @@ const read = (path) => readFile(path, "utf8");
 
 test("all shipped surfaces use the Twelve Puzzle brand", async () => {
   const capacitor = JSON.parse(await read("capacitor.config.json"));
-  const [html, plist, android, policy] = await Promise.all([
+  const [html, game, plist, android, policy] = await Promise.all([
     read("index.html"),
+    read("game.js"),
     read("ios/App/App/Info.plist"),
     read("android/app/src/main/res/values/strings.xml"),
     read("privacy.html"),
@@ -17,6 +18,7 @@ test("all shipped surfaces use the Twelve Puzzle brand", async () => {
   assert.equal(capacitor.appName, "열두 퍼즐");
   assert.equal(capacitor.appId, "com.onewaycompany.twelveguardians");
   assert.match(html, /<h1>열두 퍼즐<\/h1>/);
+  assert.doesNotMatch(game, /열두 수호대/);
   assert.match(plist, /<key>CFBundleDisplayName<\/key>\s*<string>열두 퍼즐<\/string>/);
   assert.match(android, /<string name="app_name">열두 퍼즐<\/string>/);
   assert.match(android, /<string name="title_activity_main">열두 퍼즐<\/string>/);

@@ -421,7 +421,7 @@ function render() {
     mode === "blind" ? "수호대 여정" : "모두 공개 · 연습";
   document.querySelector(".game-heading p").textContent =
     mode === "blind"
-      ? "열두 수호대와 고양이·병아리의 긴 보드 도전."
+      ? "열두 수호동물과 고양이·병아리의 긴 보드 도전."
       : "물음표 없이 차근차근 연습해 보세요.";
   const result = gameOutcome();
   $("challenge").value = run.rule;

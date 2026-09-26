@@ -103,6 +103,12 @@ h1 {
   font-weight: 800;
   font-size: 19px;
 }
+#rankings {
+  width: 42px;
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: -0.5px;
+}
 .icon-button[aria-pressed="true"] {
   background: #dcecdf;
 }
@@ -607,12 +613,15 @@ dialog::backdrop {
 dialog h2 {
   font-size: 22px;
   margin-bottom: 17px;
+  word-break: keep-all;
 }
 #dialogBody {
   font-size: 13px;
   color: #8b7a7c;
   line-height: 1.9;
   text-align: left;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 #dialogBody ol {
   padding-left: 20px;
@@ -777,6 +786,33 @@ dialog h2 {
   color: #34473f;
   background: #f6f3eb;
   --green: #426b5e;
+}
+@media (max-width: 360px) {
+  dialog:not(.tutorial-dialog) {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    padding: 24px 16px 20px;
+  }
+  dialog:not(.tutorial-dialog) h2 {
+    font-size: 20px;
+    letter-spacing: -1px;
+  }
+  #dialogBody {
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .game-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mode-label {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .mode-label select {
+    width: 100%;
+    max-width: none;
+  }
 }
 body {
   background:

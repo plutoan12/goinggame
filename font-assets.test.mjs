@@ -29,3 +29,13 @@ test("the four-lane tutorial stays inside a 320px phone viewport", async () => {
   assert.match(css, /\.tutorial-dialog\s*\{[^}]*overflow-x:\s*hidden/s);
   assert.match(css, /\.tutorial-board\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s);
 });
+
+test("compact phone headers keep Korean labels horizontal and readable", async () => {
+  const css = await readFile("style.css", "utf8");
+  assert.match(css, /#rankings\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(css, /@media\s*\(max-width:\s*360px\)[\s\S]*?\.game-heading\s*\{[^}]*flex-direction:\s*column/s);
+  assert.match(css, /@media\s*\(max-width:\s*360px\)[\s\S]*?\.mode-label\s*\{[^}]*grid-template-columns:/s);
+  assert.match(css, /@media\s*\(max-width:\s*360px\)[\s\S]*?dialog:not\(\.tutorial-dialog\)\s*\{[^}]*padding:/s);
+  assert.match(css, /dialog h2[\s\S]*?word-break:\s*keep-all/s);
+  assert.match(css, /#dialogBody[\s\S]*?word-break:\s*keep-all/s);
+});

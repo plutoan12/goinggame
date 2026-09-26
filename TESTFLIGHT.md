@@ -5,8 +5,10 @@
 - 앱: 열두 퍼즐 / 원웨이컴퍼니 / `com.onewaycompany.twelveguardians`
 - 다섯 장 20단계, 14종 픽셀 동물, 목표·표식·봉인 규칙, 기기 로컬 순위
 - 광고 `enabled=false`, 대상 연령 미정, 플레이어용 광고 UI 없음
-- 웹 자동 테스트와 번들 검증 완료
-- 네이티브 재동기화·서명·아이폰 업데이트 설치·손가락 플레이 검증은 최종 통합 단계에서 수행
+- 웹 자동 테스트 100/100·번들 검증과 iOS·Android 네이티브 동기화 완료
+- iOS Simulator Debug 빌드·설치·실행과 앱 이름·Bundle ID 확인 완료
+- 현재 실기기 서명은 개발 인증서와 프로비저닝 프로파일의 Team 불일치 및 Xcode 계정 세션 부재로 차단됨. 검증 시 연결 가능한 iPhone도 감지되지 않음
+- Xcode에 올바른 Team 계정을 다시 연결한 뒤 실기기 업데이트 설치·손가락 플레이를 수행해야 함
 - App Store Connect 등록·Validate·업로드·TestFlight 설치는 미완료
 
 ## 이전 빌드에서 확인한 사실
