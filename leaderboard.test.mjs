@@ -9,6 +9,7 @@ import {
   rankRecords,
   scoreLabel,
   createLeaderboard,
+  RANK_KEY,
 } from "./leaderboard.js";
 import { createRun } from "./session.js";
 
@@ -21,7 +22,7 @@ const run = () => createRun({ state: won, solution: [] });
 const entry = (overrides = {}) => ({
   id: "test-1",
   name: "나",
-  version: RANK_VERSION,
+  rulesVersion: RANK_VERSION,
   stage: 1,
   seed: 42,
   rule: "moves",
@@ -55,12 +56,31 @@ test("only completed journey games become records; practice and unfinished games
     now: 1,
   };
   assert.ok(validRecord(makeRecord(input)));
+  assert.equal(RANK_KEY, "twelve-puzzle-rankings-v1");
+  assert.equal(makeRecord({ ...input, round: 20 })?.stage, 20);
+  assert.equal(makeRecord({ ...input, round: 21 }), null);
   assert.equal(makeRecord({ ...input, mode: "practice" }), null);
   assert.equal(
     makeRecord({ ...input, state: { ...won, tubes: [[0, 1], [1, 0], []] } }),
     null,
   );
   assert.equal(makeRecord({ ...input, moves: NaN }), null);
+});
+test("rankings require the current rules version and never inspect old keys", () => {
+  assert.equal(RANK_VERSION, "twelve-puzzle-rules-v1");
+  assert.equal(validRecord(entry({ rulesVersion: "sort-short-start-v3" })), false);
+  assert.equal(validRecord(entry({ stage: 20 })), true);
+  assert.equal(validRecord(entry({ stage: 21 })), false);
+  const calls = [];
+  const storage = {
+    getItem(key) { calls.push(["get", key]); return null; },
+    setItem(key) { calls.push(["set", key]); },
+    removeItem(key) { calls.push(["remove", key]); },
+  };
+  const board = createLeaderboard(storage);
+  board.submit(entry());
+  assert.deepEqual(calls.map(([, key]) => key), [RANK_KEY, RANK_KEY]);
+  assert.equal(calls.some(([, key]) => key.startsWith("twelve-guardians-")), false);
 });
 test("ranking separates stage, mode, assistance and board; ties use competition ranks", () => {
   const entries = [
@@ -178,24 +198,24 @@ test("bad storage and quota errors retain an honest in-memory fallback", () => {
   assert.equal(corrupt.records.length, 0);
   assert.equal(corrupt.submit(entry()), true);
 });
-test("free stacking rankings preserve legacy storage but do not mix old scores", () => {
+test("fresh rankings leave legacy storage untouched and do not import its profile", () => {
   const storage = memoryStorage();
   const old = JSON.stringify({ name: "수호대", records: [entry({ version: "sort-limits-v1" })] });
   storage.setItem("twelve-guardians-rankings-v1", old);
   const board = createLeaderboard(storage);
-  assert.equal(board.name, "수호대");
+  assert.equal(board.name, "나");
   assert.deepEqual(board.records, []);
   board.submit(entry());
   assert.equal(createLeaderboard(storage).records.length, 1);
   assert.equal(storage.getItem("twelve-guardians-rankings-v1"), old);
-  assert.equal(validRecord(entry({ version: "sort-limits-v1" })), false);
+  assert.equal(validRecord(entry({ rulesVersion: "sort-limits-v1" })), false);
 });
 test("sanitize names and reject invalid rows, retain latest 200 records", () => {
   assert.equal(cleanName("  \n고양이\u202e "), "고양이");
   assert.equal(cleanName(" "), "나");
   assert.equal(Array.from(cleanName("🐱".repeat(15))).length, 12);
   assert.equal(validRecord(entry({ elapsedMs: 2 })), false);
-  assert.equal(validRecord(entry({ stage: 6 })), false);
+  assert.equal(validRecord(entry({ stage: 21 })), false);
   assert.equal(validRecord(entry({ moves: -1 })), false);
   let records = [];
   for (let i = 0; i < 205; i++)
@@ -208,14 +228,14 @@ test("sanitize names and reject invalid rows, retain latest 200 records", () => 
   );
   assert.equal(addRecord(records, entry({ moves: -1 })), records);
 });
-test("short-board rankings do not compare previous large-board scores or overwrite them", () => {
+test("new ranking storage does not compare or overwrite previous large-board scores", () => {
   const storage = memoryStorage();
   const old = JSON.stringify({ name: "나비", records: [entry({version: "sort-free-stack-v2"})] });
   storage.setItem("twelve-guardians-rankings-v2", old);
   const board = createLeaderboard(storage);
-  assert.equal(board.name, "나비");
+  assert.equal(board.name, "나");
   assert.deepEqual(board.records, []);
-  assert.equal(validRecord(entry({version: "sort-free-stack-v2"})), false);
+  assert.equal(validRecord(entry({rulesVersion: "sort-free-stack-v2"})), false);
   board.submit(entry());
   assert.equal(createLeaderboard(storage).records.length, 1);
   assert.equal(storage.getItem("twelve-guardians-rankings-v2"), old);

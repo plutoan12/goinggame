@@ -1,6 +1,6 @@
 import { applyMove, cloneState, isWin } from "./engine.js";
 
-export const TUTORIAL_KEY = "twelve-guardians-tutorial-v1";
+export const TUTORIAL_KEY = "twelve-puzzle-tutorial-v1";
 const steps = [{ from: 0, to: 2 }, { from: 1, to: 0 }, { from: 2, to: 1 }];
 const initial = () => ({
   capacity: 3,

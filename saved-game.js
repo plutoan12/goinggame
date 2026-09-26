@@ -1,34 +1,87 @@
-import { generateLevel, isWin } from "./engine.js";
-import { createRun } from "./session.js";
+import { validRules, validRuleProgress } from "./rules.js";
+import { validRun } from "./session.js";
+import { levelConfig, STAGES } from "./stage-config.js";
 
-export function validState(s, cfg, added) {
-  if (!s || s.capacity !== cfg.capacity || !Array.isArray(s.tubes) ||
-      s.tubes.length !== cfg.colors + cfg.blanks + Number(added)) return false;
-  if (!Array.isArray(s.hidden) || s.hidden.length !== s.tubes.length) return false;
-  const counts = Array(cfg.colors).fill(0);
-  return s.tubes.every((t, i) =>
-    Array.isArray(t) && t.length <= cfg.capacity &&
-    Array.isArray(s.hidden[i]) && s.hidden[i].length === t.length &&
-    s.hidden[i].every((h) => typeof h === "boolean") && !s.hidden[i].at(-1) &&
-    t.every((c) => Number.isInteger(c) && c >= 0 && c < cfg.colors && ++counts[c])
-  ) && counts.every((n) => n === cfg.capacity);
+export const SAVE_KEY = "twelve-puzzle-game-v1";
+
+export function validState(state, config, addedLanes = 0) {
+  if (
+    !state ||
+    state.capacity !== config.capacity ||
+    !Number.isInteger(addedLanes) ||
+    addedLanes < 0 ||
+    !Array.isArray(state.tubes) ||
+    state.tubes.length !== config.colors + config.blanks + addedLanes ||
+    !Array.isArray(state.hidden) ||
+    state.hidden.length !== state.tubes.length
+  ) return false;
+  const counts = Array(config.colors).fill(0);
+  const validLanes = state.tubes.every((tube, lane) =>
+    Array.isArray(tube) &&
+    tube.length <= config.capacity &&
+    Array.isArray(state.hidden[lane]) &&
+    state.hidden[lane].length === tube.length &&
+    state.hidden[lane].every((hidden) => typeof hidden === "boolean") &&
+    !state.hidden[lane].at(-1) &&
+    tube.every((color) =>
+      Number.isInteger(color) &&
+      color >= 0 &&
+      color < config.colors &&
+      ++counts[color]
+    )
+  );
+  return validLanes && counts.every((count) => count === config.capacity);
 }
 
-// The original localStorage key is never overwritten. Main scalar/progress
-// validation runs before this adapter, and current-shape validation after it.
-export function shortenEarlySave(saved) {
-  const legacy = saved.round === 1 ? { colors: 6, capacity: 8, blanks: 2 }
-    : saved.round === 2 ? { colors: 8, capacity: 10, blanks: 2 } : null;
-  if (!legacy || !validState(saved.state, legacy, Number(saved.extra) + Number(saved.run?.revived || false)))
-    return { saved, shortened: false };
-  const level = generateLevel(saved.mode, saved.seed, saved.round);
-  return {
-    shortened: true,
-    wasComplete: isWin(saved.state),
-    saved: {
-      ...saved, state: level.state, moves: 0, extra: false, history: [],
-      attemptId: undefined,
-      run: createRun(level, saved.run?.rule || "moves", saved.round),
-    },
-  };
+function validAttemptId(id) {
+  return typeof id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(id);
+}
+
+function validSnapshot(snapshot, config, rules, revived) {
+  return !!snapshot &&
+    Number.isSafeInteger(snapshot.moves) && snapshot.moves >= 0 &&
+    typeof snapshot.extra === "boolean" &&
+    validRuleProgress(snapshot.ruleProgress, rules) &&
+    validState(snapshot.state, config, Number(snapshot.extra) + Number(revived));
+}
+
+function matchesStageRules(rules, config) {
+  const has = (kind) => config.ruleKinds.includes(kind);
+  const expectedMarks = has("marked")
+    ? (config.tier === 11 || config.tier === 12 ? 2 : 1)
+    : 0;
+  return (rules.goalColor !== null) === has("goal") &&
+    rules.marked.length === expectedMarks &&
+    (rules.sealedLane !== null) === has("sealed");
+}
+
+export function validSavedGame(saved) {
+  if (
+    !saved ||
+    saved.version !== 1 ||
+    !["blind", "practice"].includes(saved.mode) ||
+    !Number.isInteger(saved.round) ||
+    saved.round < 1 ||
+    saved.round > STAGES.length ||
+    !Number.isInteger(saved.seed) ||
+    saved.seed < 0 ||
+    saved.seed > 0xffffffff ||
+    !Number.isSafeInteger(saved.moves) ||
+    saved.moves < 0 ||
+    typeof saved.extra !== "boolean" ||
+    !validAttemptId(saved.attemptId) ||
+    !validRun(saved.run) ||
+    !Array.isArray(saved.history) ||
+    saved.history.length > 100
+  ) return false;
+  const config = levelConfig(saved.mode, saved.round);
+  if (
+    !validRules(saved.rules, config) ||
+    !matchesStageRules(saved.rules, config) ||
+    !validRuleProgress(saved.ruleProgress, saved.rules)
+  ) return false;
+  if (!validState(saved.state, config, Number(saved.extra) + Number(saved.run.revived))) return false;
+  return saved.history.every((snapshot) =>
+    validSnapshot(snapshot, config, saved.rules, saved.run.revived)
+  );
 }

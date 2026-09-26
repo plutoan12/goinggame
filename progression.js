@@ -1,6 +1,6 @@
 import { isWin, STAGES } from "./engine.js";
 
-export const PROGRESS_KEY = "twelve-guardians-progress-v1";
+export const PROGRESS_KEY = "twelve-puzzle-progress-v1";
 const tier = (round) => Number.isSafeInteger(round) && round > 0 && round <= STAGES.length
   ? round : null;
 

@@ -9,12 +9,25 @@ function memory() {
   return { getItem: (k) => map.get(k) || null, setItem: (k, v) => map.set(k, v) };
 }
 test("fresh install exposes only intro, and neither losses nor skipped stages unlock", () => {
+  assert.equal(PROGRESS_KEY, "twelve-puzzle-progress-v1");
   const p = createProgression(memory());
   assert.equal(p.canAccess(1), true);
   for (const stage of [0, 2, 3, 4, 5, 6, NaN, 1.5]) assert.equal(p.canAccess(stage), false);
   assert.equal(p.complete(1, playing), false);
   assert.equal(p.complete(2, won), false);
   assert.equal(p.unlocked, 1);
+});
+test("progression never reads or mutates previous game keys", () => {
+  const calls = [];
+  const storage = {
+    getItem(key) { calls.push(["get", key]); return null; },
+    setItem(key) { calls.push(["set", key]); },
+    removeItem(key) { calls.push(["remove", key]); },
+  };
+  const p = createProgression(storage);
+  assert.equal(p.complete(1, won), true);
+  assert.deepEqual(calls.map(([, key]) => key), [PROGRESS_KEY, PROGRESS_KEY]);
+  assert.equal(calls.some(([, key]) => key.startsWith("twelve-guardians-")), false);
 });
 test("wins unlock one stage at a time, preserve replays and survive reopening", () => {
   const storage = memory();

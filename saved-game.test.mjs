@@ -1,49 +1,83 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { shortenEarlySave } from "./saved-game.js";
-import { generateLevel, isWin } from "./engine.js";
+import { generateLevel } from "./level-generator.js";
 import { createRun } from "./session.js";
+import { SAVE_KEY, validSavedGame, validState } from "./saved-game.js";
+import { levelConfig } from "./stage-config.js";
 
-function legacy(round, extra = false, revived = false) {
-  const colors = round === 1 ? 6 : 8, capacity = round === 1 ? 8 : 10;
-  const tubes = Array.from({length:colors}, (_, color) => Array(capacity).fill(color));
-  [tubes[0][0], tubes[1][0]] = [tubes[1][0], tubes[0][0]];
-  for (let i=0;i<2+Number(extra)+Number(revived);i++) tubes.push([]);
-  return {mode:'blind',round,seed:42,moves:12,extra,attemptId:'old-attempt',history:[{old:true}],
-    state:{capacity,tubes,hidden:tubes.map(t=>t.map(()=>false))},
-    run:{...createRun(generateLevel('blind',42,1)),rule:'timed',revived,remainingMs:20000,clockStarted:true}};
+function stage20Save({ extra = false, sealOpened = false } = {}) {
+  const level = generateLevel("blind", 20260926, 20);
+  const state = structuredClone(level.state);
+  if (extra) {
+    state.tubes.push([]);
+    state.hidden.push([]);
+  }
+  return {
+    version: 1,
+    mode: "blind",
+    round: 20,
+    seed: level.seed,
+    state,
+    moves: 9,
+    extra,
+    attemptId: "stage-20-attempt",
+    rules: level.rules,
+    ruleProgress: { ...level.progress, sealOpened },
+    run: createRun(level, "moves", 20),
+    history: [],
+  };
 }
-test("old early boards become fresh short boards without mutating original save", () => {
-  for (const round of [1,2]) for (const [extra,revived] of [[false,false],[true,true]]) {
-    const old = legacy(round,extra,revived), before = structuredClone(old);
-    const result = shortenEarlySave(old);
-    assert.equal(result.shortened,true);
-    assert.equal(result.wasComplete,false);
-    assert.deepEqual(old,before);
-    assert.equal(result.saved.round,round);
-    assert.equal(result.saved.seed,42);
-    assert.equal(result.saved.state.tubes.flat().length,round === 1 ? 16 : 20);
-    assert.equal(result.saved.moves,0);
-    assert.equal(result.saved.extra,false);
-    assert.deepEqual(result.saved.history,[]);
-    assert.equal(result.saved.attemptId,undefined);
-    assert.equal(result.saved.run.rule,'timed');
-    assert.equal(result.saved.run.clockStarted,false);
-    assert.equal(result.saved.run.revived,false);
-  }
+
+test("only the fresh twenty-stage rule snapshot is accepted", () => {
+  const saved = stage20Save();
+  assert.equal(SAVE_KEY, "twelve-puzzle-game-v1");
+  assert.equal(validSavedGame(saved), true);
+  assert.equal(validSavedGame({ ...saved, version: 0 }), false);
+  assert.equal(validSavedGame({ ...saved, round: 21 }), false);
+  assert.equal(validSavedGame({ ...saved, seed: -1 }), false);
+  assert.equal(validSavedGame({ ...saved, ruleProgress: { goalAchieved: "yes", sealOpened: false } }), false);
+  assert.equal(validSavedGame({ ...saved, rules: { ...saved.rules, sealedLane: 99 } }), false);
+  assert.equal(validSavedGame({ ...saved, rules: { ...saved.rules, goalColor: 99 } }), false);
+  assert.equal(validSavedGame({
+    ...saved,
+    rules: { goalColor: null, marked: [], sealedLane: null, unlockColor: null },
+    ruleProgress: { goalAchieved: true, sealOpened: true },
+  }), false);
+  assert.equal(validSavedGame({ ...saved, history: [{ state: saved.state }] }), false);
+  assert.equal(validSavedGame({ mode: "blind", round: 5, state: saved.state }), false);
 });
-test("current and later boards are preserved, malformed legacy boards are not repaired silently", () => {
-  for (const round of [1,2,3,4,5]) {
-    const saved={...legacy(1),round,state:generateLevel('blind',42,round).state};
-    assert.equal(shortenEarlySave(saved).saved,saved);
-    assert.equal(shortenEarlySave(saved).shortened,false);
-  }
-  const bad=legacy(1); bad.state.tubes[0].pop();
-  assert.equal(shortenEarlySave(bad).shortened,false);
+
+test("stage twenty undo restores the one-blank rule state around an extra lane", () => {
+  const before = stage20Save({ extra: false, sealOpened: false });
+  const after = stage20Save({ extra: true, sealOpened: true });
+  after.history = [{
+    state: structuredClone(before.state),
+    moves: before.moves,
+    extra: false,
+    ruleProgress: structuredClone(before.ruleProgress),
+  }];
+  assert.equal(before.state.tubes.length, 15);
+  assert.equal(after.state.tubes.length, 16);
+  assert.equal(validSavedGame(after), true);
+  assert.deepEqual(after.history[0].ruleProgress, before.ruleProgress);
+  assert.equal(after.history[0].state.tubes.length, 15);
+  assert.equal(validState(after.state, levelConfig("blind", 20), 1), true);
+  assert.equal(validSavedGame({ ...after, state: before.state }), false);
 });
-test("already completed legacy board exposes completion for existing progression", () => {
-  const saved=legacy(1);
-  [saved.state.tubes[0][0],saved.state.tubes[1][0]]=[saved.state.tubes[1][0],saved.state.tubes[0][0]];
-  assert.equal(isWin(saved.state),true);
-  assert.equal(shortenEarlySave(saved).wasComplete,true);
+
+test("board validation rejects malformed colors, hidden flags and lane counts", () => {
+  const saved = stage20Save();
+  const config = levelConfig(saved.mode, saved.round);
+  assert.equal(validState(saved.state, config, 0), true);
+  const wrongColor = structuredClone(saved.state);
+  wrongColor.tubes[0][0] = 99;
+  assert.equal(validState(wrongColor, config, 0), false);
+  const hiddenTop = structuredClone(saved.state);
+  const lane = hiddenTop.tubes.findIndex((tube) => tube.length);
+  hiddenTop.hidden[lane][hiddenTop.hidden[lane].length - 1] = true;
+  assert.equal(validState(hiddenTop, config, 0), false);
+  const missingLane = structuredClone(saved.state);
+  missingLane.tubes.pop();
+  missingLane.hidden.pop();
+  assert.equal(validState(missingLane, config, 0), false);
 });

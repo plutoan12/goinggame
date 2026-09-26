@@ -11,6 +11,7 @@ const memory = () => {
 const solve = (t) => [[0, 2], [1, 0], [2, 1]].forEach(([from, to]) => assert.equal(t.move(from, to), true));
 
 test("guided moves reject wrong targets without changing the board or advancing", () => {
+  assert.equal(TUTORIAL_KEY, "twelve-puzzle-tutorial-v1");
   const t = createTutorial(memory());
   const before = t.state;
   assert.equal(isWin(before), false);
@@ -23,6 +24,18 @@ test("guided moves reject wrong targets without changing the board or advancing"
   assert.equal(t.move(0, 2), true);
   assert.deepEqual(t.state.tubes, [[0, 0], [1, 1, 0], [1], []]);
   assert.deepEqual(t.guide, { from: 1, to: 0 });
+});
+test("tutorial storage is isolated from previous app keys", () => {
+  const calls = [];
+  const storage = {
+    getItem(key) { calls.push(["get", key]); return null; },
+    setItem(key) { calls.push(["set", key]); },
+    removeItem(key) { calls.push(["remove", key]); },
+  };
+  const tutorial = createTutorial(storage);
+  solve(tutorial);
+  assert.deepEqual(calls.map(([, key]) => key), [TUTORIAL_KEY, TUTORIAL_KEY]);
+  assert.equal(calls.some(([, key]) => key.startsWith("twelve-guardians-")), false);
 });
 
 test("three real engine moves finish the tutorial, not the main stage or leaderboard", () => {

@@ -1,8 +1,7 @@
 import { isWin, levelConfig } from "./engine.js";
 
-export const RANK_VERSION = "sort-short-start-v3";
-const KEY = "twelve-guardians-rankings-v3";
-const LEGACY_KEY = "twelve-guardians-rankings-v2";
+export const RANK_VERSION = "twelve-puzzle-rules-v1";
+export const RANK_KEY = "twelve-puzzle-rankings-v1";
 const MAX_RECORDS = 200;
 
 export function cleanName(value) {
@@ -28,7 +27,7 @@ export function makeRecord({
   run,
   now = Date.now(),
 }) {
-  if (mode !== "blind" || !isWin(state)) return null;
+  if (mode !== "blind" || !isWin(state) || !Number.isInteger(round) || round < 1 || round > 20) return null;
   const used =
     Math.max(0, 3 + (run.rewards.undo ? 3 : 0) - run.undo) +
     Math.max(0, 2 + (run.rewards.peek ? 2 : 0) - run.peek) +
@@ -37,7 +36,7 @@ export function makeRecord({
   const record = {
     id,
     name: cleanName(name),
-    version: RANK_VERSION,
+    rulesVersion: RANK_VERSION,
     stage: levelConfig(mode, round).tier,
     seed: seed >>> 0,
     rule: run.rule,
@@ -64,10 +63,10 @@ export function validRecord(r) {
     /^[a-zA-Z0-9-]{1,80}$/.test(r.id) &&
     typeof r.name === "string" &&
     r.name === cleanName(r.name) &&
-    r.version === RANK_VERSION &&
+    r.rulesVersion === RANK_VERSION &&
     Number.isInteger(r.stage) &&
     r.stage >= 1 &&
-    r.stage <= 5 &&
+    r.stage <= 20 &&
     Number.isInteger(r.seed) &&
     r.seed >= 0 &&
     r.seed <= 0xffffffff &&
@@ -125,10 +124,7 @@ export function createLeaderboard(storage) {
     name = "나",
     storageError = false;
   try {
-    const value = JSON.parse(storage.getItem(KEY));
-    // Carry over the display name, not scores earned under different rules.
-    // Keep the old key untouched so earlier records are not destroyed.
-    if (!value) name = cleanName(JSON.parse(storage.getItem(LEGACY_KEY) || storage.getItem("twelve-guardians-rankings-v1"))?.name);
+    const value = JSON.parse(storage.getItem(RANK_KEY));
     if (value) {
       name = cleanName(value.name);
       if (Array.isArray(value.records)) {
@@ -143,7 +139,7 @@ export function createLeaderboard(storage) {
   }
   const persist = () => {
     try {
-      storage.setItem(KEY, JSON.stringify({ name, records }));
+      storage.setItem(RANK_KEY, JSON.stringify({ name, records }));
       storageError = false;
     } catch {
       storageError = true;
