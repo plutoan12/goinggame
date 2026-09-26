@@ -1,6 +1,6 @@
 // Public configuration, bundled into the app. Never put credentials here.
 export const releaseConfig = {
-  appName: "열두 수호대",
+  appName: "열두 퍼즐",
   publisher: "원웨이컴퍼니",
   supportEmail: "qkdqor19@icloud.com",
   privacyUrl: "",

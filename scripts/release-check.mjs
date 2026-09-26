@@ -7,6 +7,7 @@ const manifest = await read("android/app/src/main/AndroidManifest.xml");
 const plist = await read("ios/App/App/Info.plist");
 const policy = await read("privacy.html");
 const page = await read("index.html");
+const androidStrings = await read("android/app/src/main/res/values/strings.xml");
 const blockers = [];
 const gradle = await read("android/app/build.gradle");
 const xcode = await read("ios/App/App.xcodeproj/project.pbxproj");
@@ -15,6 +16,12 @@ const androidId = gradle.match(/applicationId\s+"([^"]+)"/)?.[1];
 const iosIds = [...xcode.matchAll(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g)].map((match) => match[1]);
 if (namespace !== capacitor.appId || androidId !== capacitor.appId || !iosIds.length || iosIds.some((id) => id !== capacitor.appId)) blockers.push("네이티브 앱 식별자가 capacitor.config.json과 일치하지 않음");
 if (capacitor.appId.startsWith("com.example.")) blockers.push("고유 앱 ID 확정 및 iOS/Android 식별자 일치 필요");
+if (config.appName !== "열두 퍼즐" || capacitor.appName !== config.appName ||
+    !plist.includes(`<string>${config.appName}</string>`) ||
+    !androidStrings.includes(`>${config.appName}</string>`) ||
+    !page.includes(`<h1>${config.appName}</h1>`)) {
+  blockers.push("웹·iOS·Android 앱 이름을 열두 퍼즐로 통일해야 함");
+}
 if (config.audience === "unset") blockers.push("주 이용 연령 / 스토어 대상 연령 결정 필요");
 if (!/^https:\/\/[^\s]+$/.test(config.privacyUrl)) blockers.push("검토 완료된 개인정보처리방침의 공개 HTTPS URL 필요");
 if (policy.includes("출시 전 검토 초안")) blockers.push("개인정보처리방침 초안 검토·확정 필요");
