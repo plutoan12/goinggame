@@ -83,7 +83,7 @@ export function mulberry32(seed) {
 }
 // Every reverse step has an exact legal forward inverse (single-tile moves).
 // Return that witness too, so tests can verify every generated board to completion.
-export function generateLevel(mode = "blind", seed = 1, round = 1) {
+export function generateBaseLevel(mode = "blind", seed = 1, round = 1) {
   const cfg = levelConfig(mode, round),
     rng = mulberry32(seed);
   // Try several reversible layouts, keeping the one with most color boundaries.
@@ -103,6 +103,10 @@ export function generateLevel(mode = "blind", seed = 1, round = 1) {
   });
   return best;
 }
+
+// Compatibility alias for the base-engine tests and the legacy save adapter.
+// Player-facing level creation uses level-generator.js.
+export const generateLevel = generateBaseLevel;
 
 export function mixingScore(s) {
   return s.tubes.reduce(

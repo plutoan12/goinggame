@@ -7,11 +7,11 @@ import {
   consumeItem,
   revealLane,
   grantReward,
-  compactSolution,
   elapse,
   formatTime,
 } from "./session.js";
-import { generateLevel, applyMove, revealCompleted } from "./engine.js";
+import { applyMove, revealCompleted } from "./engine.js";
+import { compactSolution, generateLevel } from "./level-generator.js";
 import { createAdService } from "./ads.js";
 
 const playing = {
@@ -50,8 +50,8 @@ test("game-over: exhausted moves, actual deadlock, win precedence, unlimited pra
   assert.equal(outcome(blocked, run.limit + 10, run, "practice"), "playing");
 });
 test("known solution fits budget at every stage, including last-move success", () => {
-  for (let stage = 1; stage <= 5; stage++)
-    for (let seed = 0; seed < 20; seed++) {
+  for (let stage = 1; stage <= 20; stage++)
+    for (let seed = 0; seed < 5; seed++) {
       const level = generateLevel("blind", seed, stage),
         run = createRun(level);
       assert.ok(validRun(run));
@@ -95,7 +95,10 @@ test("timed run starts only on first move, elapsed time clamps, moves are unlimi
 });
 test("timer stage durations and validation", () => {
   const level = generateLevel("blind", 6, 1);
-  for (const [index, seconds] of [90, 150, 240, 360, 480].entries()) {
+  for (const [index, seconds] of [
+    90, 110, 130, 150, 180, 210, 240, 270, 300, 330,
+    360, 390, 420, 450, 480, 510, 540, 570, 600, 660,
+  ].entries()) {
     const run = createRun(level, "timed", index + 1);
     assert.equal(run.remainingMs, seconds * 1000);
     assert.ok(validRun(run));

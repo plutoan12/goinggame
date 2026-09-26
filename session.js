@@ -2,43 +2,21 @@ import {
   isWin,
   legalMoves,
   cloneState,
-  applyMove,
-  revealCompleted,
 } from "./engine.js";
+import { compactSolution } from "./level-generator.js";
+import { levelConfig } from "./stage-config.js";
 
-// Erase loops in the generator's witness, without claiming an optimal solution.
-export function compactSolution(level) {
-  let state = cloneState(level.state);
-  const key = (s) => JSON.stringify(s);
-  const keys = [key(state)],
-    seen = new Map([[keys[0], 0]]),
-    path = [];
-  for (const move of level.solution) {
-    state = revealCompleted(applyMove(state, move.from, move.to));
-    const nextKey = key(state);
-    if (seen.has(nextKey)) {
-      const index = seen.get(nextKey);
-      for (const removed of keys.splice(index + 1)) seen.delete(removed);
-      path.length = index;
-    } else {
-      path.push(move);
-      keys.push(nextKey);
-      seen.set(nextKey, path.length);
-    }
-  }
-  return path;
-}
+export { compactSolution } from "./level-generator.js";
 
 export function timerFields(rule = "moves", stage = 1) {
-  const timeLimitMs =
-    [90, 150, 240, 360, 480][Math.min(4, Math.max(0, stage - 1))] * 1000;
+  const timeLimitMs = levelConfig("blind", stage).timeLimitMs;
   return { rule, timeLimitMs, remainingMs: timeLimitMs, clockStarted: false };
 }
 
 export function createRun(level, rule = "moves", stage = 1) {
   // A known legal solution fits; this is not an optimal-solution estimate.
   return {
-    limit: Math.max(24, Math.ceil(compactSolution(level).length * 1.2) + 6),
+    limit: Math.max(24, Math.ceil(compactSolution(level).length * 1.25) + 8),
     ...timerFields(rule, stage),
     undo: 3,
     peek: 2,
