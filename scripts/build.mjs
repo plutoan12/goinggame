@@ -1,5 +1,6 @@
 import { mkdir, copyFile } from "node:fs/promises";
 import { build } from "esbuild";
+await import("./prepare-fonts.mjs");
 const root = new URL("../", import.meta.url);
 const files = [
   "index.html",
@@ -8,8 +9,11 @@ const files = [
   "LICENSE",
   "assets/guardian-atlas-v3.png",
   "assets/app-icon.png",
+  "assets/fonts/Galmuri11.woff2",
+  "assets/fonts/Galmuri11-Bold.woff2",
+  "assets/fonts/OFL-Galmuri.txt",
 ];
-await mkdir(new URL("dist/assets/", root), { recursive: true });
+await mkdir(new URL("dist/assets/fonts/", root), { recursive: true });
 for (const file of files)
   await copyFile(new URL(file, root), new URL(`dist/${file}`, root));
 await build({

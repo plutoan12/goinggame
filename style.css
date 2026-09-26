@@ -1,5 +1,19 @@
+@font-face {
+  font-family: "Galmuri11";
+  src: url("./assets/fonts/Galmuri11.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Galmuri11";
+  src: url("./assets/fonts/Galmuri11-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
 :root {
-  font-family: ui-rounded, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: "Galmuri11", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   color: #413c43;
   background: #f8f5ee;
   font-synthesis: none;
@@ -1123,15 +1137,28 @@ dialog {
   max-height: calc(100dvh - 40px);
   overflow-y: auto;
 }
-.tutorial-dialog { width: min(420px, 94vw); padding: 22px 18px; }
+.tutorial-dialog {
+  width: min(420px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  padding: 22px 18px;
+  overflow-x: hidden;
+}
 .tutorial-dialog .dialog-pet { display: none; }
 .tutorial-dialog h2 { margin: 10px 0; }
-.tutorial-viewport { padding: 6px; overflow-x: auto; }
+.tutorial-viewport {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  overflow-x: hidden;
+}
 .tutorial-board {
   --columns: 4;
   --capacity: 3;
   --board-min: 0px;
   --tile-height: 48px;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 .tutorial-board .rail { min-width: 0; }
@@ -1140,6 +1167,238 @@ dialog {
 .tutorial-instruction { min-height: 52px; color: #36503f; font-weight: 700; }
 .tutorial-note { font-size: 12px; color: #636b63; }
 .tutorial-board .lane:focus-visible { outline: 2px solid #315844; outline-offset: 4px; }
+
+/* Cozy 16-bit interface: square pixels, stepped shadows and no ornamental motifs. */
+:root {
+  --pixel-ink: #3f4a40;
+  --pixel-dark: #355345;
+  --pixel-leaf: #71906f;
+  --pixel-cream: #fff7dc;
+  --pixel-ivory: #f5eed6;
+  --pixel-apricot: #e8b982;
+  --pixel-blue: #8498a7;
+  color: var(--pixel-ink);
+  background: #dce4cf;
+  font-synthesis: none;
+  image-rendering: pixelated;
+}
+body {
+  min-width: 320px;
+  font-size: 12px;
+  line-height: 1.65;
+  background-color: #dce4cf;
+  background-image:
+    linear-gradient(45deg, #d3ddc6 25%, transparent 25%),
+    linear-gradient(-45deg, #d3ddc6 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e8ead7 75%),
+    linear-gradient(-45deg, transparent 75%, #e8ead7 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+h1,
+h2,
+strong,
+b,
+button,
+summary,
+.lane-number,
+.level-badge,
+.limit-counter {
+  font-family: "Galmuri11", "Apple SD Gothic Neo", sans-serif;
+  font-weight: 700;
+}
+.game-shell {
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  background: #f7f1dd;
+  border-inline: 2px solid #768474;
+  box-shadow: 6px 0 0 #aab6a1, -6px 0 0 #aab6a1;
+}
+button,
+select,
+input,
+.stage-chapter,
+.stage-button,
+.run-status,
+.board-frame,
+.tools,
+.tools button,
+.guardian-card,
+.rule-summary,
+dialog,
+.primary,
+.secondary {
+  border-radius: 0;
+}
+button,
+select,
+input,
+.stage-button,
+.tools button,
+.primary,
+.secondary {
+  border: 2px solid var(--pixel-dark);
+  box-shadow: 3px 3px 0 #7d8e79;
+}
+button:active:not(:disabled),
+.stage-button[aria-pressed="true"] {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #7d8e79;
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.lane:focus-visible {
+  outline: 3px dashed #ca7c50;
+  outline-offset: 4px;
+}
+.brand-icon {
+  border-radius: 0;
+  border: 2px solid var(--pixel-dark);
+  box-shadow: 4px 4px 0 #91a58b;
+  transform: none;
+}
+.icon-button {
+  border-radius: 0;
+}
+.stage-chapter {
+  border: 2px solid #667968;
+  background: #e9edd8;
+  box-shadow: 3px 3px 0 #a0ac93;
+}
+.stage-button {
+  background: var(--pixel-cream);
+  border-color: #596e5e;
+}
+.stage-button.locked {
+  background: #d4d5c7;
+  border-style: solid;
+}
+.stage-button[aria-pressed="true"] {
+  background: #527263;
+  border-color: #30493e;
+}
+.run-status {
+  border: 2px solid #607466;
+  background: #e5ead8;
+  box-shadow: 4px 4px 0 #a7b09b;
+}
+.rule-summary {
+  border: 2px solid #667968;
+  border-left-width: 7px;
+  background: #f0e9c9;
+  box-shadow: 3px 3px 0 #b8ae8d;
+}
+.board-frame {
+  border: 3px solid #455f52;
+  background: #9fbc9d;
+  box-shadow: 6px 6px 0 #627866;
+}
+.board-viewport {
+  border-radius: 0;
+  border: 2px solid #455f52;
+  background: #f7efd7;
+}
+.rail {
+  border: 2px solid #5d735f;
+  border-radius: 0;
+  background: #bed0af;
+  box-shadow: inset 3px 0 0 #8da486, inset -3px 0 0 #dfe7c8;
+}
+.tile {
+  border: 2px solid #514f43;
+  border-radius: 0;
+  box-shadow: 0 4px 0 #7f765e;
+}
+.tile::after,
+.tile-back {
+  border-radius: 0;
+}
+.pet-art,
+.tile-face,
+.tile-back {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.tools {
+  border: 2px solid #6d7b6a;
+  background: #eee8d2;
+  backdrop-filter: none;
+  box-shadow: 4px 4px 0 #a3aa94;
+}
+.tools button {
+  min-width: 0;
+  background: var(--pixel-cream);
+  border-bottom-width: 2px;
+}
+.tools button:nth-child(2) {
+  background: #dce8cb;
+}
+.guardian-card {
+  border: 2px solid #687664;
+  background: #fff6d9;
+  box-shadow: 3px 3px 0 #a7a68f;
+}
+dialog {
+  border: 3px solid #455f52;
+  background: #fff6dc;
+  box-shadow: 8px 8px 0 #53675b;
+}
+dialog::backdrop {
+  background: #314238aa;
+  backdrop-filter: none;
+}
+.primary {
+  background: #567965;
+  border-color: #31493d;
+}
+.eyebrow,
+.prototype-note,
+.tools small,
+.stage-button small,
+.guardian-card small,
+.board-note {
+  font-size: max(10px, 0.625rem);
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .game-shell {
+    padding:
+      max(14px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(18px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+    border: 0;
+    box-shadow: none;
+  }
+  .tools {
+    gap: 5px;
+    padding: 5px;
+  }
+  .tools button {
+    padding: 9px 6px;
+  }
+  .tutorial-dialog {
+    padding: 18px 10px;
+  }
+  .tutorial-viewport {
+    padding: 5px 2px;
+  }
+  .tutorial-board {
+    --tile-height: 44px;
+    gap: 4px;
+  }
+  .tutorial-board .rail {
+    padding-inline: 2px;
+  }
+  .tutorial-board .lane-hint {
+    font-size: 8px;
+    letter-spacing: -0.5px;
+  }
+}
 body {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);

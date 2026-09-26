@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test stage-config.test.mjs engine.test.mjs rules.test.mjs level-generator.test.mjs rule-view.test.mjs game-state.test.mjs motion.test.mjs drag.test.mjs progression.test.mjs tutorial.test.mjs saved-game.test.mjs session.test.mjs leaderboard.test.mjs native-adapter.test.mjs",
-    "postinstall": "node scripts/prepare-admob.mjs",
+    "test": "node --test stage-config.test.mjs engine.test.mjs rules.test.mjs level-generator.test.mjs rule-view.test.mjs game-state.test.mjs font-assets.test.mjs motion.test.mjs drag.test.mjs progression.test.mjs tutorial.test.mjs saved-game.test.mjs session.test.mjs leaderboard.test.mjs native-adapter.test.mjs",
+    "postinstall": "node scripts/prepare-admob.mjs && node scripts/prepare-fonts.mjs",
+    "prepare:fonts": "node scripts/prepare-fonts.mjs",
     "icons": "node scripts/icons.mjs",
     "release:check": "node scripts/release-check.mjs",
     "native:doctor": "node scripts/native-doctor.mjs",
@@ -21,7 +22,8 @@
     "@capacitor-community/admob": "8.1.0",
     "@capacitor/android": "8.5.2",
     "@capacitor/core": "8.5.2",
-    "@capacitor/ios": "8.5.2"
+    "@capacitor/ios": "8.5.2",
+    "galmuri": "2.40.3"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2",
