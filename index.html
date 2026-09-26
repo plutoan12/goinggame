@@ -57,6 +57,7 @@
         <strong id="dimensions">6열 × 4칸 · 4종</strong
         ><span id="stageDescription"></span>
       </div>
+      <p id="ruleSummary" class="rule-summary">기본 정렬 규칙</p>
       <div class="run-status">
         <label class="challenge-label"
           >도전 방식
@@ -121,8 +122,7 @@
         </button>
       </section>
       <div class="supply-actions">
-        <button id="supplies">▷ 광고 보상 · 아이템 충전</button
-        ><button id="restart">↻ 다시 하기</button>
+        <button id="restart">↻ 다시 하기</button>
       </div>
       <footer>
         <span>맨 위 동물을 꾹 잡아 끌거나, 출발·도착 열을 차례로 눌러요.</span
@@ -134,12 +134,9 @@
         </summary>
         <div id="guardianList" class="guardian-list"></div>
       </details>
-      <!-- Reserved for a future native banner; no empty ad box in the game. -->
-      <aside data-ad-slot="menu-banner" hidden></aside>
       <p class="prototype-note">열두 수호대 · 같은 동물끼리, 나란히.</p>
       <nav class="privacy-links" aria-label="앱 정보">
         <a href="./privacy.html">개인정보처리방침</a>
-        <button id="privacySettings">광고 개인정보 설정</button>
         <a href="mailto:qkdqor19@icloud.com">문의하기</a>
       </nav>
       <p class="prototype-note">원웨이컴퍼니 · qkdqor19@icloud.com</p>
@@ -154,22 +151,6 @@
       <div id="dialogBody"></div>
       <button class="primary" id="dialogAction">알겠어요!</button>
       <div id="dialogOptions"></div>
-    </dialog>
-    <dialog id="adDialog" aria-labelledby="adTitle">
-      <p class="eyebrow">DEV PREVIEW · 실제 광고 아님</p>
-      <h2 id="adTitle">보상형 광고 테스트</h2>
-      <p data-ad-placement></p>
-      <p>
-        로컬 브라우저 전용 동작 확인 화면이에요.<br />실제 광고 시청이나 수익은
-        발생하지 않아요.
-      </p>
-      <form method="dialog" class="ad-test-actions">
-        <button class="primary" value="earned">보상 완료 테스트</button>
-        <button class="secondary" value="cancelled">시청 취소 테스트</button>
-        <button class="secondary" value="unavailable">
-          불러오기 실패 테스트
-        </button>
-      </form>
     </dialog>
     <script type="module" src="./game.js?v=mobile-1"></script>
   </body>

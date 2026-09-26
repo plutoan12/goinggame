@@ -48,12 +48,12 @@ export function validRun(run) {
     typeof run.rewards.peek === "boolean"
   );
 }
-export function outcome(state, moves, run, mode) {
+export function outcome(state, moves, run, mode, availableMoves = legalMoves) {
   if (isWin(state)) return "won"; // Last permitted move can still win.
   if (mode === "practice") return "playing";
   if (run.rule === "timed" && run.remainingMs <= 0) return "time";
   if (run.rule !== "timed" && moves >= run.limit) return "moves";
-  if (!legalMoves(state).length) return "blocked";
+  if (!availableMoves(state).length) return "blocked";
   return "playing";
 }
 export function elapse(run, milliseconds) {

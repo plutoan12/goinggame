@@ -783,9 +783,26 @@ body {
 }
 .stages {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 7px;
+  gap: 8px;
   margin-bottom: 14px;
+}
+.stage-chapter {
+  border: 1px solid #d8ddcf;
+  background: #f4f3e8;
+  padding: 6px;
+}
+.stage-chapter > summary {
+  cursor: pointer;
+  color: #52695e;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px;
+}
+.stage-chapter-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  padding-top: 6px;
 }
 .stage-button {
   background: #fffdf7;
@@ -837,6 +854,32 @@ body {
 .stage-info span {
   text-align: right;
   font-size: 10px;
+}
+.rule-summary {
+  margin: -4px 2px 14px;
+  padding: 9px 11px;
+  border-left: 4px solid #6f8c72;
+  background: #eef2e7;
+  color: #53665a;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.lane.marked-lane .rail {
+  background-image: repeating-linear-gradient(135deg, #fffdf6 0 7px, #e8efd9 7px 14px);
+  outline: 2px dashed #6d8e63;
+}
+.lane.sealed-lane .rail {
+  filter: grayscale(0.65);
+  opacity: 0.58;
+  background: #d8d5d0;
+}
+.lane.sealed-lane .lane-number::after {
+  content: "🔒";
+  margin-left: 3px;
+  font-size: 10px;
+}
+.lane.seal-open .rail {
+  outline: 2px solid #d8b45e;
 }
 .board-frame {
   background: #c5d5c9;
@@ -985,6 +1028,9 @@ body {
   }
   .stage-button small {
     font-size: 9px;
+  }
+  .stage-chapter-buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .stage-info {
     flex-wrap: wrap;
