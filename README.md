@@ -70,5 +70,8 @@ npm run build         # dist 웹 번들 생성
 npm run icons         # 픽셀 원본으로 네이티브 아이콘/시작 화면 생성
 npm run native:sync   # iOS·Android 프로젝트 동기화
 npm run native:doctor # 로컬 네이티브 환경 점검
+npm run android:debug # Android Debug APK 빌드
 npm run release:check # 출시 차단 항목 정적 검사
 ```
+
+Android 빌드는 JDK 21과 Android SDK Platform 36을 사용하며 결과물은 `android/app/build/outputs/apk/debug/app-debug.apk`에 생성됩니다. iOS 실기기 빌드는 Xcode에 Bundle ID와 일치하는 Team·프로비저닝 프로파일이 필요합니다.

@@ -7,10 +7,12 @@
 - 현재 앱명은 `열두 퍼즐`, Bundle ID는 `com.onewaycompany.twelveguardians`로 유지.
 - `npm ci`, 전체 자동 테스트 100/100, 웹 빌드, iOS·Android Capacitor 동기화 성공. Xcode 27.0 확인.
 - iOS Simulator용 Debug 네이티브 빌드 성공. 앱 이름·Bundle ID 확인 후 iPhone Simulator에 설치하고 실행했으며, 첫 실행 픽셀 튜토리얼 화면을 캡처해 확인.
+- Temurin JDK 21.0.12.1, Android SDK Platform 36과 Build-Tools 35/36을 사용자 영역에 설치. Android Debug APK 빌드 성공 후 v2 서명, 패키지 ID와 `열두 퍼즐` 앱 이름을 확인. 검증본은 `release-artifacts/TwelvePuzzle-debug.apk`.
 - 브라우저에서 1·5·9·13·17·20단계의 기본·목표·표식·봉인 조합을 확인. 320px와 390px에서 문서 가로 넘침 없이 긴 게임판만 가로 스크롤하며, 320px 도움말·순위 창도 확인.
 - 광고는 비활성화되어 있고 플레이어에게 광고를 약속하는 버튼이나 문구가 없음.
 - 현재 실기기용 서명 빌드는 Keychain의 개발 인증서 Team과 이 Bundle ID용 로컬 프로비저닝 프로파일 Team이 달라 실패. Xcode에 해당 Team 계정을 다시 연결해 프로파일을 갱신해야 함.
 - 검증 시점에 연결 가능한 iPhone이 감지되지 않아 현재 20단계 빌드의 실기기 업데이트 설치·실행은 수행하지 못함. 아래 서명·설치 성공 이력은 이전 빌드 기록임.
+- 연결된 Android 기기나 에뮬레이터가 없어 APK의 실제 Android 설치·터치 플레이는 수행하지 못함.
 - 현재 빌드의 iPhone 손가락 드래그, 회전·잠금 복귀, 장시간 플레이 성능은 사용자 수동 확인이 필요.
 
 ## TestFlight 사전 검증 (이전 5단계 빌드)

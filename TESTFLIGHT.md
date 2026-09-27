@@ -7,6 +7,7 @@
 - 광고 `enabled=false`, 대상 연령 미정, 플레이어용 광고 UI 없음
 - 웹 자동 테스트 100/100·번들 검증과 iOS·Android 네이티브 동기화 완료
 - iOS Simulator Debug 빌드·설치·실행과 앱 이름·Bundle ID 확인 완료
+- Android Debug APK 빌드와 v2 서명·패키지 ID·앱 이름 확인 완료. Android 실기기/에뮬레이터 설치는 미수행
 - 현재 실기기 서명은 개발 인증서와 프로비저닝 프로파일의 Team 불일치 및 Xcode 계정 세션 부재로 차단됨. 검증 시 연결 가능한 iPhone도 감지되지 않음
 - Xcode에 올바른 Team 계정을 다시 연결한 뒤 실기기 업데이트 설치·손가락 플레이를 수행해야 함
 - App Store Connect 등록·Validate·업로드·TestFlight 설치는 미완료
