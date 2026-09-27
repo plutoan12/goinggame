@@ -27,3 +27,30 @@ export const SPECIAL_SPRITES = Object.freeze({
   selection: 6,
   empty: 7,
 });
+
+export function createPetArtElement(document, pets, id) {
+  const art = document.createElement("span");
+  art.className = "pet-art";
+  art.style.setProperty("--sprite-x", `${((id % 4) * 100) / 3}%`);
+  art.style.setProperty("--sprite-y", `${(Math.floor(id / 4) * 100) / 3}%`);
+  art.setAttribute("aria-hidden", "true");
+  const fallback = document.createElement("span");
+  fallback.className = "pet-fallback";
+  fallback.textContent = Array.from(pets[id]?.[1] || "동물")[0];
+  art.append(fallback);
+  return art;
+}
+
+export function watchPetAtlas(ImageConstructor, root, src) {
+  const probe = new ImageConstructor();
+  probe.onload = () => {
+    root.classList.remove("pet-atlas-failed");
+    root.classList.add("pet-atlas-ready");
+  };
+  probe.onerror = () => {
+    root.classList.remove("pet-atlas-ready");
+    root.classList.add("pet-atlas-failed");
+  };
+  probe.src = src;
+  return probe;
+}

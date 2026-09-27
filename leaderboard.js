@@ -1,7 +1,8 @@
 import { isWin, levelConfig } from "./engine.js";
+import { validCompletionAudit } from "./saved-game.js?v=save-3";
 
-export const RANK_VERSION = "twelve-puzzle-rules-v1";
-export const RANK_KEY = "twelve-puzzle-rankings-v1";
+export const RANK_VERSION = "twelve-puzzle-rules-v2";
+export const RANK_KEY = "twelve-puzzle-rankings-v2";
 const MAX_RECORDS = 200;
 
 export function cleanName(value) {
@@ -25,9 +26,23 @@ export function makeRecord({
   moves,
   extra,
   run,
+  rules,
+  ruleProgress,
+  audit,
   now = Date.now(),
 }) {
-  if (mode !== "blind" || !isWin(state) || !Number.isInteger(round) || round < 1 || round > 20) return null;
+  if (
+    mode !== "blind" ||
+    !isWin(state) ||
+    !Number.isSafeInteger(moves) ||
+    moves <= 0 ||
+    !Number.isInteger(round) ||
+    round < 1 ||
+    round > 20 ||
+    !validCompletionAudit({
+      mode, round, seed, state, moves, extra, run, rules, ruleProgress, audit,
+    })
+  ) return null;
   const used =
     Math.max(0, 3 + (run.rewards.undo ? 3 : 0) - run.undo) +
     Math.max(0, 2 + (run.rewards.peek ? 2 : 0) - run.peek) +
@@ -72,7 +87,7 @@ export function validRecord(r) {
     r.seed <= 0xffffffff &&
     ["moves", "timed"].includes(r.rule) &&
     Number.isSafeInteger(r.moves) &&
-    r.moves >= 0 &&
+    r.moves > 0 &&
     (r.rule === "moves"
       ? r.elapsedMs === null
       : Number.isSafeInteger(r.elapsedMs) && r.elapsedMs >= 0) &&

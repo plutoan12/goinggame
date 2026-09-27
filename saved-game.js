@@ -1,8 +1,36 @@
-import { validRules, validRuleProgress } from "./rules.js";
-import { validRun } from "./session.js";
+import { applyRuleMove, validRules, validRuleProgress } from "./rules.js";
+import { cloneState, isWin, revealCompleted } from "./engine.js";
+import { generateLevel } from "./level-generator.js";
+import { createRun, revealLane, validRun } from "./session.js";
 import { levelConfig, STAGES } from "./stage-config.js";
+import { releaseConfig } from "./release-config.js";
 
-export const SAVE_KEY = "twelve-puzzle-game-v1";
+export const SAVE_KEY = "twelve-puzzle-game-v2";
+
+export function createSaveWriter(storage, key, onFailure = () => {}) {
+  let storageError = false;
+  let warned = false;
+  return {
+    get storageError() {
+      return storageError;
+    },
+    write(value) {
+      try {
+        storage.setItem(key, JSON.stringify(value));
+        storageError = false;
+        warned = false;
+        return true;
+      } catch {
+        storageError = true;
+        if (!warned) {
+          warned = true;
+          onFailure();
+        }
+        return false;
+      }
+    },
+  };
+}
 
 export function validState(state, config, addedLanes = 0) {
   if (
@@ -55,10 +83,184 @@ function matchesStageRules(rules, config) {
     (rules.sealedLane !== null) === has("sealed");
 }
 
+function sameRules(left, right) {
+  return left.goalColor === right.goalColor &&
+    left.sealedLane === right.sealedLane &&
+    left.unlockColor === right.unlockColor &&
+    left.marked.length === right.marked.length &&
+    left.marked.every((mark, index) =>
+      mark.lane === right.marked[index].lane && mark.color === right.marked[index].color
+    );
+}
+
+function allVisible(state) {
+  return state.hidden.every((lane) => lane.every((hidden) => !hidden));
+}
+
+function sameState(left, right) {
+  return left.capacity === right.capacity &&
+    left.tubes.length === right.tubes.length &&
+    left.tubes.every((tube, lane) =>
+      tube.length === right.tubes[lane].length &&
+      tube.every((color, index) => color === right.tubes[lane][index]) &&
+      left.hidden[lane].length === right.hidden[lane].length &&
+      left.hidden[lane].every((hidden, index) => hidden === right.hidden[lane][index])
+    );
+}
+
+function sealedLaneVisible(state, rules) {
+  return rules.sealedLane === null ||
+    state.hidden[rules.sealedLane]?.every((hidden) => !hidden) === true;
+}
+
+function validAuditShape(audit) {
+  return Array.isArray(audit) &&
+    audit.every((event) => {
+      if (!event || typeof event !== "object") return false;
+      if (event.type === "undo" || event.type === "extra") return true;
+      if (event.type === "peek") return Number.isInteger(event.lane);
+      return event.type === "move" &&
+        Number.isInteger(event.from) && Number.isInteger(event.to);
+    });
+}
+
+function replayAudit(saved, initial) {
+  let state = cloneState(initial.state);
+  let progress = structuredClone(initial.progress);
+  let moves = 0;
+  let extra = false;
+  let undo = 3;
+  let peek = 2;
+  let snapshots = [];
+  for (const event of saved.audit) {
+    if (isWin(state)) return null;
+    if (event.type === "move") {
+      if (
+        saved.mode !== "practice" &&
+        saved.run.rule === "moves" &&
+        moves >= saved.run.limit
+      ) return null;
+      snapshots.push({
+        state: cloneState(state), moves, extra, ruleProgress: { ...progress },
+      });
+      if (snapshots.length > 100) snapshots.shift();
+      const applied = applyRuleMove(
+        state, event.from, event.to, saved.rules, progress,
+      );
+      if (!applied) return null;
+      state = applied.state;
+      progress = applied.progress;
+      moves++;
+    } else if (event.type === "undo") {
+      if (!snapshots.length || (saved.mode !== "practice" && undo <= 0)) return null;
+      if (saved.mode !== "practice") undo--;
+      const snapshot = snapshots.pop();
+      state = snapshot.state;
+      moves = snapshot.moves;
+      extra = snapshot.extra;
+      progress = snapshot.ruleProgress;
+    } else if (event.type === "extra") {
+      if (extra) return null;
+      state = cloneState(state);
+      state.tubes.push([]);
+      state.hidden.push([]);
+      extra = true;
+      snapshots = [];
+    } else if (event.type === "peek") {
+      if (
+        event.lane < 0 ||
+        event.lane >= state.tubes.length ||
+        (saved.mode !== "practice" && peek <= 0)
+      ) return null;
+      const revealed = revealLane(state, event.lane);
+      if (revealed === state) return null;
+      if (saved.mode !== "practice") peek--;
+      state = revealCompleted(revealed);
+      snapshots = [];
+    } else {
+      return null;
+    }
+  }
+  return { state, progress, moves, extra, undo, peek, snapshots };
+}
+
+function replayMatchesSaved(saved, initial, requireWin = false) {
+  const replayed = replayAudit(saved, initial);
+  return replayed &&
+    (!requireWin || isWin(replayed.state)) &&
+    sameState(replayed.state, saved.state) &&
+    replayed.moves === saved.moves &&
+    replayed.extra === saved.extra &&
+    replayed.progress.goalAchieved === saved.ruleProgress.goalAchieved &&
+    replayed.progress.sealOpened === saved.ruleProgress.sealOpened &&
+    replayed.undo === saved.run.undo &&
+    replayed.peek === saved.run.peek
+    ? replayed
+    : null;
+}
+
+function historyMatchesReplay(saved, replayed, config) {
+  return saved.history.length === replayed.snapshots.length &&
+    saved.history.every((snapshot, index) => {
+      const expected = replayed.snapshots[index];
+      return validSnapshot(snapshot, config, saved.rules, false) &&
+        snapshot.moves === expected.moves &&
+        snapshot.extra === expected.extra &&
+        snapshot.ruleProgress.goalAchieved === expected.ruleProgress.goalAchieved &&
+        snapshot.ruleProgress.sealOpened === expected.ruleProgress.sealOpened &&
+        sameState(snapshot.state, expected.state);
+    });
+}
+
+export function validCompletionAudit(saved) {
+  if (
+    !saved ||
+    !["blind", "practice"].includes(saved.mode) ||
+    !Number.isInteger(saved.round) ||
+    saved.round < 1 ||
+    saved.round > STAGES.length ||
+    !Number.isInteger(saved.seed) ||
+    saved.seed < 0 ||
+    saved.seed > 0xffffffff ||
+    !Number.isSafeInteger(saved.moves) ||
+    saved.moves <= 0 ||
+    typeof saved.extra !== "boolean" ||
+    !validRun(saved.run) ||
+    !validAuditShape(saved.audit)
+  ) return false;
+  const config = levelConfig(saved.mode, saved.round);
+  if (
+    !validRules(saved.rules, config) ||
+    !validRuleProgress(saved.ruleProgress, saved.rules) ||
+    !validState(saved.state, config, Number(saved.extra)) ||
+    (!releaseConfig.ads.enabled && (
+      saved.run.revived || saved.run.rewards.undo || saved.run.rewards.peek
+    ))
+  ) return false;
+  let initial;
+  try {
+    initial = generateLevel(saved.mode, saved.seed, saved.round);
+  } catch {
+    return false;
+  }
+  const baseRun = createRun(initial, saved.run.rule, saved.round);
+  return initial.seed === saved.seed &&
+    sameRules(saved.rules, initial.rules) &&
+    saved.run.limit === baseRun.limit &&
+    saved.run.timeLimitMs === baseRun.timeLimitMs &&
+    saved.run.remainingMs <= baseRun.timeLimitMs &&
+    (saved.run.rule !== "timed" || saved.mode === "practice" || saved.run.clockStarted) &&
+    (saved.run.rule === "timed" && saved.mode !== "practice" ||
+      saved.run.remainingMs === baseRun.timeLimitMs) &&
+    (saved.run.rule !== "timed" || saved.mode === "practice" ||
+      saved.run.remainingMs > 0 && saved.run.remainingMs < baseRun.timeLimitMs) &&
+    !!replayMatchesSaved(saved, initial, true);
+}
+
 export function validSavedGame(saved) {
   if (
     !saved ||
-    saved.version !== 1 ||
+    saved.version !== 2 ||
     !["blind", "practice"].includes(saved.mode) ||
     !Number.isInteger(saved.round) ||
     saved.round < 1 ||
@@ -71,6 +273,7 @@ export function validSavedGame(saved) {
     typeof saved.extra !== "boolean" ||
     !validAttemptId(saved.attemptId) ||
     !validRun(saved.run) ||
+    !validAuditShape(saved.audit) ||
     !Array.isArray(saved.history) ||
     saved.history.length > 100
   ) return false;
@@ -81,7 +284,37 @@ export function validSavedGame(saved) {
     !validRuleProgress(saved.ruleProgress, saved.rules)
   ) return false;
   if (!validState(saved.state, config, Number(saved.extra) + Number(saved.run.revived))) return false;
-  return saved.history.every((snapshot) =>
-    validSnapshot(snapshot, config, saved.rules, saved.run.revived)
-  );
+  let initial;
+  try {
+    initial = generateLevel(saved.mode, saved.seed, saved.round);
+  } catch {
+    return false;
+  }
+  if (initial.seed !== saved.seed || !sameRules(saved.rules, initial.rules)) return false;
+  const baseRun = createRun(initial, saved.run.rule, saved.round);
+  const maxUndo = 3 + Number(saved.run.rewards.undo) * 3;
+  const maxPeek = 2 + Number(saved.run.rewards.peek) * 2;
+  if (
+    saved.run.timeLimitMs !== config.timeLimitMs ||
+    saved.run.undo > maxUndo ||
+    saved.run.peek > maxPeek ||
+    saved.run.remainingMs > config.timeLimitMs + Number(saved.run.revived) * 60000 ||
+    (!releaseConfig.ads.enabled && (
+      saved.run.revived || saved.run.rewards.undo || saved.run.rewards.peek
+    )) ||
+    (!saved.run.revived && saved.run.limit !== baseRun.limit) ||
+    (saved.run.revived && (
+      saved.run.limit < baseRun.limit + 30 ||
+      saved.run.limit > Math.max(baseRun.limit, saved.moves) + 30
+    )) ||
+    (saved.mode === "practice" && !allVisible(saved.state)) ||
+    !sealedLaneVisible(saved.state, saved.rules) ||
+    (saved.moves === 0 && (
+      isWin(saved.state) ||
+      saved.ruleProgress.goalAchieved !== initial.progress.goalAchieved ||
+      saved.ruleProgress.sealOpened !== initial.progress.sealOpened
+    ))
+  ) return false;
+  const replayed = replayMatchesSaved(saved, initial, isWin(saved.state));
+  return !!replayed && historyMatchesReplay(saved, replayed, config);
 }

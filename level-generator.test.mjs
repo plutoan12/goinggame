@@ -55,6 +55,21 @@ test("special stages receive compatible goal, marked and sealed rules", () => {
   }
 });
 
+test("sealed lanes reveal every starting tile before they unlock", () => {
+  for (const round of [13, 14, 15, 16, 18, 19, 20]) {
+    for (let seed = 1; seed <= 10; seed++) {
+      const level = generateLevel("blind", 5000 + round * 100 + seed, round);
+      const lane = level.rules.sealedLane;
+      assert.notEqual(lane, null, `${round}/${seed}: sealed lane`);
+      assert.equal(
+        level.state.hidden[lane].some(Boolean),
+        false,
+        `${round}/${seed}: sealed contents stay visible`,
+      );
+    }
+  }
+});
+
 test("2000 boards solve through the same rule engine used by players", () => {
   for (const mode of ["blind", "practice"])
     for (let round = 1; round <= 20; round++)

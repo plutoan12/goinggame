@@ -1,4 +1,4 @@
-import { rankRecords, scoreLabel } from "./leaderboard.js?v=ranks-2";
+import { rankRecords, scoreLabel } from "./leaderboard.js?v=ranks-4";
 import { STAGES } from "./engine.js";
 
 const node = (tag, text, className) => {

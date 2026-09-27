@@ -44,3 +44,16 @@ test("publisher, support email and bundle identifier stay unchanged", async () =
   assert.match(gradle, /applicationId "com\.onewaycompany\.twelveguardians"/);
   assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = com\.onewaycompany\.twelveguardians;/);
 });
+
+test("web entry points bump their cache version with native reliability fixes", async () => {
+  const html = await read("index.html");
+  const game = await read("game.js");
+  const view = await read("leaderboard-view.js");
+  assert.match(html, /style\.css\?v=mobile-4/);
+  assert.match(html, /game\.js\?v=mobile-4/);
+  assert.doesNotMatch(html, /\?v=mobile-[123]/);
+  assert.match(game, /leaderboard\.js\?v=ranks-4/);
+  assert.match(game, /leaderboard-view\.js\?v=ranks-4/);
+  assert.match(view, /leaderboard\.js\?v=ranks-4/);
+  assert.doesNotMatch(`${game}\n${view}`, /\?v=ranks-[123]/);
+});

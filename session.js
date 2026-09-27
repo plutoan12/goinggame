@@ -70,6 +70,15 @@ export function formatTime(milliseconds) {
   const seconds = Math.ceil(Math.max(0, milliseconds) / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
+export function canReturnToItemsAfterLoss(
+  result,
+  { historyLength = 0, undo = 0, extra = true } = {},
+) {
+  const canUndo = historyLength > 0 && undo > 0;
+  if (result === "moves") return canUndo;
+  if (result === "blocked") return canUndo || !extra;
+  return false;
+}
 export function consumeItem(run, item, mode) {
   if (!["undo", "peek"].includes(item)) return null;
   if (mode === "practice") return structuredClone(run);

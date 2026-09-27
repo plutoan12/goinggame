@@ -39,3 +39,14 @@ test("compact phone headers keep Korean labels horizontal and readable", async (
   assert.match(css, /dialog h2[\s\S]*?word-break:\s*keep-all/s);
   assert.match(css, /#dialogBody[\s\S]*?word-break:\s*keep-all/s);
 });
+
+test("native phone controls keep at least 44px touch targets", async () => {
+  const css = await readFile("style.css", "utf8");
+  assert.match(css, /\.icon-button\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px/s);
+  assert.match(css, /@media\s*\(max-width:\s*500px\)[\s\S]*?\.limit-actions button\s*\{[^}]*min-height:\s*44px/s);
+  assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?select\s*\{[^}]*min-height:\s*44px/s);
+  assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?footer button\s*\{[^}]*min-height:\s*44px/s);
+  assert.match(css, /\.rank-profile input,\s*\.rank-filters select\s*\{[^}]*min-height:\s*44px/s);
+  assert.match(css, /\.rank-profile button\s*\{[^}]*min-height:\s*44px/s);
+  assert.doesNotMatch(css, /\.icon-button\s*\{[^}]*width:\s*34px/s);
+});

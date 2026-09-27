@@ -19,10 +19,12 @@ import { attachTileDrag } from "./drag.js";
 import { createProgression } from "./progression.js";
 import { createTutorial } from "./tutorial.js";
 import { createTutorialView } from "./tutorial-view.js";
-import { SAVE_KEY, validSavedGame } from "./saved-game.js";
+import { SAVE_KEY, createSaveWriter, validSavedGame } from "./saved-game.js?v=save-3";
 import {
   GUARDIANS as PETS,
   SPECIAL_SPRITES,
+  createPetArtElement,
+  watchPetAtlas,
 } from "./guardians.js?v=pixel-1";
 import {
   createRun,
@@ -31,14 +33,15 @@ import {
   revealLane,
   elapse,
   formatTime,
+  canReturnToItemsAfterLoss,
 } from "./session.js?v=limits-1";
 import {
   createLeaderboard,
   makeRecord,
   rankRecords,
   scoreLabel,
-} from "./leaderboard.js?v=ranks-2";
-import { renderLeaderboard } from "./leaderboard-view.js?v=ranks-2";
+} from "./leaderboard.js?v=ranks-4";
+import { renderLeaderboard } from "./leaderboard-view.js?v=ranks-4";
 
 const $ = (id) => document.getElementById(id);
 let boardDrag;
@@ -68,6 +71,7 @@ let mode = "blind",
   rules,
   ruleProgress,
   history = [],
+  audit = [],
   moves = 0,
   extra = false;
 let selected = null,
@@ -76,19 +80,20 @@ let selected = null,
   dialogAction = () => $("dialog").close();
 let lastMove = null;
 let busy = false;
+let saveWarning = false;
+const gameSaveWriter = createSaveWriter(rankStorage, SAVE_KEY, () => {
+  saveWarning = true;
+});
 try {
   sound = localStorage.getItem("pet-sort-sound") === "on";
 } catch {
   /* Optional preference. */
 }
 
+watchPetAtlas(Image, document.documentElement, "./assets/pixel-guardian-atlas.png");
+
 function petArt(id) {
-  const art = document.createElement("span");
-  art.className = "pet-art";
-  art.style.setProperty("--sprite-x", `${((id % 4) * 100) / 3}%`);
-  art.style.setProperty("--sprite-y", `${(Math.floor(id / 4) * 100) / 3}%`);
-  art.setAttribute("aria-hidden", "true");
-  return art;
+  return createPetArtElement(document, PETS, id);
 }
 function specialArt(kind) {
   const id = SPECIAL_SPRITES[kind];
@@ -177,27 +182,23 @@ function updateStageButtons() {
 }
 
 function save() {
-  try {
-    localStorage.setItem(
-      SAVE_KEY,
-      JSON.stringify({
-        version: 1,
-        mode,
-        seed,
-        round,
-        state,
-        moves,
-        extra,
-        rules,
-        ruleProgress,
-        run,
-        attemptId,
-        history: history.slice(-100),
-      }),
-    );
-  } catch {
-    /* Private browsing / full storage: play remains available. */
-  }
+  const stored = gameSaveWriter.write({
+    version: 2,
+    mode,
+    seed,
+    round,
+    state,
+    moves,
+    extra,
+    rules,
+    ruleProgress,
+    run,
+    attemptId,
+    audit,
+    history: history.slice(-100),
+  });
+  saveWarning = gameSaveWriter.storageError;
+  return stored;
 }
 function restore() {
   try {
@@ -206,6 +207,7 @@ function restore() {
     ({ mode, seed, round, state, moves, extra, rules, ruleProgress, run } = saved);
     attemptId = saved.attemptId;
     paused = run.rule === "timed" && run.clockStarted;
+    audit = structuredClone(saved.audit);
     history = structuredClone(saved.history);
     return true;
   } catch {
@@ -213,6 +215,11 @@ function restore() {
   }
 }
 function tell(text, error = false) {
+  if (saveWarning) {
+    $("message").textContent = "저장 공간 문제로 현재 판은 이번 실행에서만 유지돼요. 앱을 닫으면 진행이 사라질 수 있어요.";
+    $("message").classList.add("error");
+    return;
+  }
   $("message").textContent = text;
   $("message").classList.toggle("error", error);
 }
@@ -535,6 +542,7 @@ async function pick(i, origin) {
   state = applied.state;
   ruleProgress = applied.progress;
   moves++;
+  audit.push({ type: "move", from, to: i });
   if (run.rule === "timed" && mode !== "practice") run.clockStarted = true;
   selected = null;
   const completed = applied.completedColor !== null;
@@ -601,6 +609,7 @@ function start(
   run = createRun(generated.next.level, nextRule, round);
   attemptId = newAttemptId();
   history = [];
+  audit = [];
   moves = 0;
   extra = false;
   selected = null;
@@ -663,9 +672,9 @@ function confirmRestart(action) {
 function showWin() {
   settleClock();
   if (!isWin(state)) return;
-  progression.complete(round, state);
-  updateStageButtons();
   const record = currentRecord();
+  if (mode === "practice" || record) progression.complete(round, state);
+  updateStageButtons();
   let rankMessage = "연습 모드 기록은 순위에 등록하지 않아요.";
   if (record) {
     save(); // Persist the attempt ID before inserting; reopening a win is idempotent.
@@ -719,6 +728,9 @@ function currentRecord() {
     moves,
     extra,
     run,
+    rules,
+    ruleProgress,
+    audit,
   });
 }
 function showRankings() {
@@ -774,7 +786,12 @@ function showLoss() {
     },
     "게임오버",
   );
-  option("남은 아이템 사용하러 돌아가기", () => $("dialog").close());
+  if (canReturnToItemsAfterLoss(result, {
+    historyLength: history.length,
+    undo: run.undo,
+    extra,
+  }))
+    option("남은 아이템 사용하러 돌아가기", () => $("dialog").close());
 }
 function newSeed() {
   return crypto.getRandomValues(new Uint32Array(1))[0];
@@ -796,6 +813,7 @@ $("undo").addEventListener("click", () => {
   if (!next) return;
   run = next;
   ({ state, moves, extra, ruleProgress } = restoreMoveSnapshot(history.pop()));
+  audit.push({ type: "undo" });
   selected = null;
   lastMove = null;
   render();
@@ -815,6 +833,7 @@ $("extra").addEventListener("click", () => {
   state.tubes.push([]);
   state.hidden.push([]);
   extra = true;
+  audit.push({ type: "extra" });
   selected = null;
   lastMove = null;
   render();
@@ -837,7 +856,8 @@ $("peek").addEventListener("click", () => {
     tell("먼저 물음표가 있는 열을 선택한 뒤 한 열 공개를 눌러 주세요.");
     return;
   }
-  const nextState = revealLane(state, selected);
+  const lane = selected;
+  const nextState = revealLane(state, lane);
   if (nextState === state) {
     tell("이 열은 이미 모두 공개됐어요. 아이템은 쓰지 않았어요.");
     return;
@@ -846,6 +866,7 @@ $("peek").addEventListener("click", () => {
   if (!next) return;
   run = next;
   state = revealCompleted(nextState);
+  audit.push({ type: "peek", lane });
   history = [];
   selected = null;
   lastMove = null;

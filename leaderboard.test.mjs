@@ -12,13 +12,50 @@ import {
   RANK_KEY,
 } from "./leaderboard.js";
 import { createRun } from "./session.js";
+import { compactSolution, generateLevel } from "./level-generator.js";
+import { applyRuleMove } from "./rules.js";
 
-const won = {
-  capacity: 2,
-  tubes: [[0, 0], [1, 1], []],
-  hidden: [[false, false], [false, false], []],
-};
-const run = () => createRun({ state: won, solution: [] });
+function completedInput({
+  id = "round-1",
+  seed = 42,
+  round = 1,
+  rule = "moves",
+  extra = false,
+  now = 1,
+} = {}) {
+  const level = generateLevel("blind", seed, round);
+  let state = structuredClone(level.state);
+  let ruleProgress = structuredClone(level.progress);
+  const audit = [];
+  if (extra) {
+    state.tubes.push([]);
+    state.hidden.push([]);
+    audit.push({ type: "extra" });
+  }
+  const solution = compactSolution(level);
+  for (const { from, to } of solution) {
+    const applied = applyRuleMove(state, from, to, level.rules, ruleProgress);
+    assert.ok(applied);
+    state = applied.state;
+    ruleProgress = applied.progress;
+    audit.push({ type: "move", from, to });
+  }
+  return {
+    id,
+    name: "우리",
+    mode: "blind",
+    seed: level.seed,
+    round,
+    state,
+    moves: solution.length,
+    extra,
+    run: createRun(level, rule, round),
+    rules: structuredClone(level.rules),
+    ruleProgress,
+    audit,
+    now,
+  };
+}
 const entry = (overrides = {}) => ({
   id: "test-1",
   name: "나",
@@ -43,31 +80,40 @@ function memoryStorage() {
 }
 
 test("only completed journey games become records; practice and unfinished games excluded", () => {
-  const input = {
-    id: "round-1",
-    name: "우리",
-    mode: "blind",
-    seed: 42,
-    round: 1,
-    state: won,
-    moves: 20,
-    extra: false,
-    run: run(),
-    now: 1,
-  };
+  const input = completedInput();
   assert.ok(validRecord(makeRecord(input)));
-  assert.equal(RANK_KEY, "twelve-puzzle-rankings-v1");
-  assert.equal(makeRecord({ ...input, round: 20 })?.stage, 20);
+  assert.equal(RANK_KEY, "twelve-puzzle-rankings-v2");
+  assert.equal(makeRecord(completedInput({ round: 20 }))?.stage, 20);
   assert.equal(makeRecord({ ...input, round: 21 }), null);
   assert.equal(makeRecord({ ...input, mode: "practice" }), null);
+  assert.equal(makeRecord({ ...input, moves: 0 }), null);
+  assert.equal(makeRecord({ ...input, moves: 1 }), null);
+  assert.equal(makeRecord({
+    ...input,
+    moves: 1,
+    audit: [input.audit.at(-1)],
+  }), null);
+  assert.equal(makeRecord({ ...input, audit: [{}] }), null);
   assert.equal(
-    makeRecord({ ...input, state: { ...won, tubes: [[0, 1], [1, 0], []] } }),
+    makeRecord({ ...input, state: generateLevel("blind", input.seed, 1).state }),
     null,
   );
   assert.equal(makeRecord({ ...input, moves: NaN }), null);
+  assert.equal(makeRecord({
+    ...input,
+    run: { ...input.run, limit: input.run.limit + 1 },
+  }), null);
+  assert.equal(makeRecord({
+    ...input,
+    run: {
+      ...input.run,
+      timeLimitMs: input.run.timeLimitMs + 1000,
+      remainingMs: input.run.remainingMs + 1000,
+    },
+  }), null);
 });
 test("rankings require the current rules version and never inspect old keys", () => {
-  assert.equal(RANK_VERSION, "twelve-puzzle-rules-v1");
+  assert.equal(RANK_VERSION, "twelve-puzzle-rules-v2");
   assert.equal(validRecord(entry({ rulesVersion: "sort-short-start-v3" })), false);
   assert.equal(validRecord(entry({ stage: 20 })), true);
   assert.equal(validRecord(entry({ stage: 21 })), false);
@@ -107,67 +153,43 @@ test("ranking separates stage, mode, assistance and board; ties use competition 
   );
 });
 test("timed ranking uses elapsed active time, includes earned extra time and rounds to tenths", () => {
+  const input = completedInput({ id: "timed-1", rule: "timed" });
   const timed = {
-    ...run(),
-    rule: "timed",
+    ...input.run,
     clockStarted: true,
-    timeLimitMs: 90000,
-    remainingMs: 45249,
-    revived: true,
+    remainingMs: input.run.timeLimitMs - 44751,
   };
   const record = makeRecord({
-    id: "timed-1",
-    name: "나",
-    mode: "blind",
-    seed: 42,
-    round: 1,
-    state: won,
-    moves: 200,
-    extra: false,
+    ...input,
     run: timed,
-    now: 1,
   });
-  assert.equal(record.elapsedMs, 104800);
-  assert.equal(record.assisted, true);
-  assert.equal(scoreLabel(record), "1:44.8");
+  assert.equal(record.elapsedMs, 44800);
+  assert.equal(record.assisted, false);
+  assert.equal(scoreLabel(record), "0:44.8");
   const faster = { ...record, id: "timed-2", elapsedMs: 20000, moves: 300 };
   assert.equal(
     rankRecords([record, faster], {
       ...filter,
       rule: "timed",
-      assisted: true,
+      assisted: false,
     })[0].id,
     "timed-2",
   );
 });
-test("item replenishment cannot hide item use; unused replenishment is not assistance", () => {
-  const input = {
-    id: "item-1",
-    name: "나",
-    mode: "blind",
-    seed: 42,
-    round: 1,
-    state: won,
-    moves: 20,
-    extra: false,
-    run: run(),
-    now: 1,
-  };
-  assert.equal(
-    makeRecord({
-      ...input,
-      run: { ...run(), undo: 5, rewards: { undo: true, peek: false } },
-    }).itemsUsed,
-    1,
-  );
-  assert.equal(
-    makeRecord({
-      ...input,
-      run: { ...run(), undo: 6, rewards: { undo: true, peek: false } },
-    }).assisted,
-    false,
-  );
-  assert.equal(makeRecord({ ...input, extra: true }).assisted, true);
+test("timed completion must consume positive active time", () => {
+  const input = completedInput({ id: "zero-time", rule: "timed" });
+  assert.equal(makeRecord({
+    ...input,
+    run: { ...input.run, clockStarted: true },
+  }), null);
+});
+test("disabled ad rewards are rejected while a verified extra lane is assisted", () => {
+  const input = completedInput({ id: "item-1" });
+  assert.equal(makeRecord({
+    ...input,
+    run: { ...input.run, undo: 6, rewards: { undo: true, peek: false } },
+  }), null);
+  assert.equal(makeRecord(completedInput({ id: "extra-1", extra: true })).assisted, true);
 });
 test("duplicate victory is idempotent across reload; new attempts remain independent", () => {
   const storage = memoryStorage();
@@ -239,4 +261,17 @@ test("new ranking storage does not compare or overwrite previous large-board sco
   board.submit(entry());
   assert.equal(createLeaderboard(storage).records.length, 1);
   assert.equal(storage.getItem("twelve-guardians-rankings-v2"), old);
+});
+test("audit-hardened rankings ignore the previous unaudited ranking key", () => {
+  const storage = memoryStorage();
+  storage.setItem("twelve-puzzle-rankings-v1", JSON.stringify({
+    name: "이전 이름",
+    records: [{
+      ...entry({ moves: 1 }),
+      rulesVersion: "twelve-puzzle-rules-v1",
+    }],
+  }));
+  const board = createLeaderboard(storage);
+  assert.equal(board.name, "나");
+  assert.deepEqual(board.records, []);
 });

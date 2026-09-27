@@ -92,8 +92,10 @@ function assignRules(level, config) {
       sealedLane: needsSeal ? seal.lane : null,
       unlockColor: needsSeal ? first.color : null,
     };
+    const state = cloneState(level.state);
+    if (rules.sealedLane !== null) state.hidden?.[rules.sealedLane]?.fill(false);
     const progress = initialRuleProgress(rules);
-    const candidate = { ...level, rules, progress };
+    const candidate = { ...level, state, rules, progress };
     try {
       if (isWin(replaySolution(candidate).state)) return candidate;
     } catch {

@@ -1,7 +1,9 @@
 import { mkdir, copyFile } from "node:fs/promises";
 import { build } from "esbuild";
+import { resetDirectory } from "./reset-dir.mjs";
 await import("./prepare-fonts.mjs");
 const root = new URL("../", import.meta.url);
+await resetDirectory(new URL("dist/", root));
 const files = [
   "index.html",
   "style.css",

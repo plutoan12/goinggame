@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
-import { GUARDIANS, SPECIAL_SPRITES } from "./guardians.js";
+import * as guardianModule from "./guardians.js";
+
+const { GUARDIANS, SPECIAL_SPRITES } = guardianModule;
 
 async function cellHasVisibleAlpha(path, index, columns, rows) {
   const image = sharp(path);
@@ -71,6 +73,45 @@ test("sprite identities and special-rule cells stay in their approved order", ()
     selection: 6,
     empty: 7,
   });
+});
+
+test("animal art keeps a readable text fallback when the atlas fails", () => {
+  assert.equal(typeof guardianModule.createPetArtElement, "function");
+  assert.equal(typeof guardianModule.watchPetAtlas, "function");
+  if (
+    typeof guardianModule.createPetArtElement !== "function" ||
+    typeof guardianModule.watchPetAtlas !== "function"
+  ) return;
+
+  const document = {
+    createElement() {
+      return {
+        children: [],
+        style: { values: {}, setProperty(key, value) { this.values[key] = value; } },
+        append(child) { this.children.push(child); },
+        setAttribute(key, value) { this[key] = value; },
+      };
+    },
+  };
+  const tiger = guardianModule.createPetArtElement(document, GUARDIANS, 2);
+  assert.equal(tiger.className, "pet-art");
+  assert.equal(tiger.children[0].className, "pet-fallback");
+  assert.equal(tiger.children[0].textContent, "호");
+
+  const classes = new Set();
+  const root = {
+    classList: {
+      add: (name) => classes.add(name),
+      remove: (name) => classes.delete(name),
+    },
+  };
+  class FakeImage {}
+  const probe = guardianModule.watchPetAtlas(FakeImage, root, "atlas.png");
+  assert.equal(probe.src, "atlas.png");
+  probe.onerror();
+  assert.deepEqual([...classes], ["pet-atlas-failed"]);
+  probe.onload();
+  assert.deepEqual([...classes], ["pet-atlas-ready"]);
 });
 
 test("web build and native icon generation consume the pixel sources", async () => {

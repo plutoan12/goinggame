@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as session from "./session.js";
 import {
   createRun,
   validRun,
@@ -105,6 +106,21 @@ test("timer stage durations and validation", () => {
     assert.equal(validRun({ ...run, remainingMs: -1 }), false);
   }
   assert.equal(formatTime(150000), "2:30");
+});
+test("timed-out runs do not offer an unusable return-to-items action", () => {
+  assert.equal(session.canReturnToItemsAfterLoss?.("time", {}), false);
+  assert.equal(session.canReturnToItemsAfterLoss?.("moves", {
+    historyLength: 1, undo: 1, extra: false,
+  }), true);
+  assert.equal(session.canReturnToItemsAfterLoss?.("moves", {
+    historyLength: 0, undo: 3, extra: false,
+  }), false);
+  assert.equal(session.canReturnToItemsAfterLoss?.("blocked", {
+    historyLength: 0, undo: 0, extra: false,
+  }), true);
+  assert.equal(session.canReturnToItemsAfterLoss?.("blocked", {
+    historyLength: 0, undo: 0, extra: true,
+  }), false);
 });
 test("items deplete, cannot go negative, practice is unlimited, reveal is immutable", () => {
   let run = fresh();
