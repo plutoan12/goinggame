@@ -6,16 +6,16 @@ const TIMES = [
 ];
 
 const rows = [
-  ["첫걸음", 4, 4, 0, 2, []],
-  ["햇살길", 5, 4, 1, 2, []],
-  ["꽃들판", 6, 5, 1, 2, []],
-  ["솔숲길", 7, 5, 2, 2, []],
-  ["별빛뜰", 8, 6, 2, 2, ["goal"]],
-  ["달맞이", 9, 6, 3, 2, ["goal"]],
-  ["구름재", 10, 7, 3, 2, ["goal"]],
+  ["첫걸음", 4, 4, 1, 2, []],
+  ["햇살길", 5, 4, 2, 2, []],
+  ["꽃들판", 6, 5, 2, 2, []],
+  ["솔숲길", 7, 5, 3, 2, []],
+  ["별빛뜰", 8, 6, 3, 2, ["goal"]],
+  ["달맞이", 9, 6, 4, 2, ["goal"]],
+  ["구름재", 10, 7, 4, 2, ["goal"]],
   ["바람고개", 11, 7, 4, 2, ["goal"]],
-  ["수호숲", 12, 8, 4, 2, ["marked"]],
-  ["수호문", 13, 8, 4, 2, ["marked"]],
+  ["수호숲", 12, 8, 5, 2, ["marked"]],
+  ["수호문", 13, 8, 5, 2, ["marked"]],
   ["푸른마루", 14, 9, 5, 2, ["marked"]],
   ["별마루", 14, 9, 5, 2, ["marked"]],
   ["새벽뜰", 14, 10, 5, 2, ["sealed"]],
@@ -56,4 +56,13 @@ export function levelConfig(mode = "blind", round = 1) {
 
 export function stageColumns(config) {
   return config.colors + config.blanks;
+}
+
+export function stageGroups() {
+  const size = 4;
+  return Array.from({ length: Math.ceil(STAGES.length / size) }, (_, index) => {
+    const start = index * size + 1;
+    const end = Math.min(STAGES.length, start + size - 1);
+    return { start, end, label: `${start}~${end}단계` };
+  });
 }

@@ -5,9 +5,9 @@
 - 웹 번들에 20단계, 14종 픽셀 동물, 목표·표식·봉인 규칙, Galmuri11 글꼴, 기기 로컬 순위를 반영.
 - 자동 생성 보드 2,000개를 플레이어와 같은 규칙 엔진으로 재생해 풀이 가능성을 검사.
 - 현재 앱명은 `열두 퍼즐`, Bundle ID는 `com.onewaycompany.twelveguardians`로 유지.
-- 전체 자동 테스트 119/119, 웹 빌드, iOS·Android Capacitor 동기화 성공. Xcode 27.0 확인.
+- 전체 자동 테스트 121/121, 웹 빌드, iOS·Android Capacitor 동기화 성공. Xcode 27.0 확인.
 - iOS Simulator용 Debug 네이티브 빌드 성공. 앱 이름·Bundle ID 확인 후 iPhone 18 Pro / iOS 27.0 Simulator에 설치·실행했고, 첫 실행 픽셀 튜토리얼 화면을 캡처해 확인.
-- Temurin JDK 21.0.12.1, Android SDK Platform 36과 Build-Tools 35/36을 사용자 영역에 설치. Android Debug APK 빌드 성공 후 v2 서명, 패키지 ID와 `열두 퍼즐` 앱 이름을 확인. 검증본은 `release-artifacts/TwelvePuzzle-debug.apk`이며 SHA-256은 `d75e67d7b6c763f9014ba0766e5f14c3510fa3d600a0ec9b4cb0b2fd8794dca8`.
+- Temurin JDK 21.0.12.1, Android SDK Platform 36과 Build-Tools 35/36을 사용자 영역에 설치. Android Debug APK 빌드 성공 후 v2 서명, 패키지 ID와 `열두 퍼즐` 앱 이름을 확인. 검증본은 `release-artifacts/TwelvePuzzle-debug.apk`이며 SHA-256은 `85c560f6c3df00559e30a9e7dc9945b08387d0cb47df0f50838c442ba7b533d0`.
 - Android 16 / API 36 Google APIs arm64 일반 에뮬레이터에 APK를 설치해 명시적으로 실행했다. 첫 실행 픽셀 튜토리얼과 20단계 선택 화면을 캡처했고 앱이 전경에 유지되며 앱 프로세스의 치명적 오류가 없음을 확인했다.
 - 브라우저에서 1·5·9·13·17·20단계의 기본·목표·표식·봉인 조합을 확인. 320px와 390px에서 문서 가로 넘침 없이 긴 게임판만 가로 스크롤하며, 320px 도움말·순위 창도 확인.
 - 광고는 비활성화되어 있고 플레이어에게 광고를 약속하는 버튼이나 문구가 없음.

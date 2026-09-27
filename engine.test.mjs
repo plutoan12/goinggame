@@ -134,7 +134,7 @@ test("difficulty grows in both dimensions, hidden depth and species, then caps",
     assert.equal(state.tubes.length, cfg.colors + cfg.blanks);
     assert.equal(state.capacity, cfg.capacity);
     assert.ok(state.hidden.every((h) => !h.at(-1)));
-    if (round === 1) assert.ok(state.hidden.flat().every((h) => !h));
+    if (round === 1) assert.ok(state.hidden.flat().some(Boolean));
     const practice = generateLevel("practice", 26491, round).state;
     assert.ok(practice.hidden.flat().every((h) => !h));
     prev = cfg;

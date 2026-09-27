@@ -14,7 +14,7 @@
     <link rel="preload" href="./assets/pixel-special-atlas.png" as="image" />
     <link rel="icon" href="./assets/app-icon.png" type="image/png" />
     <link rel="apple-touch-icon" href="./assets/app-icon.png" />
-    <link rel="stylesheet" href="./style.css?v=mobile-4" />
+    <link rel="stylesheet" href="./style.css?v=mobile-5" />
   </head>
   <body>
     <main class="game-shell">
@@ -55,7 +55,10 @@
           </select></label
         >
       </section>
-      <nav id="stages" class="stages" aria-label="난이도 선택"></nav>
+      <div class="stage-picker-heading">
+        <strong>전체 20단계</strong><span>4단계씩 펼쳐 보기</span>
+      </div>
+      <nav id="stages" class="stages" aria-label="전체 20단계 난이도 선택"></nav>
       <div class="stage-info">
         <strong id="dimensions">6열 × 4칸 · 4종</strong
         ><span id="stageDescription"></span>
@@ -155,6 +158,6 @@
       <button class="primary" id="dialogAction">알겠어요!</button>
       <div id="dialogOptions"></div>
     </dialog>
-    <script type="module" src="./game.js?v=mobile-4"></script>
+    <script type="module" src="./game.js?v=mobile-5"></script>
   </body>
 </html>

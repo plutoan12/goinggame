@@ -6,9 +6,9 @@ import {
   isWin,
   revealCompleted,
   topColor,
-} from "./engine.js";
+} from "./engine.js?v=engine-2";
 import { applyRuleMove, initialRuleProgress } from "./rules.js";
-import { levelConfig } from "./stage-config.js";
+import { levelConfig } from "./stage-config.js?v=stages-2";
 
 export const CANDIDATES_PER_SEED = 40;
 export const SEED_RETRIES = 16;

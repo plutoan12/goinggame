@@ -2,11 +2,11 @@ import {
   isWin,
   legalMoves,
   cloneState,
-} from "./engine.js";
-import { compactSolution } from "./level-generator.js";
-import { levelConfig } from "./stage-config.js";
+} from "./engine.js?v=engine-2";
+import { compactSolution } from "./level-generator.js?v=generator-2";
+import { levelConfig } from "./stage-config.js?v=stages-2";
 
-export { compactSolution } from "./level-generator.js";
+export { compactSolution } from "./level-generator.js?v=generator-2";
 
 export function timerFields(rule = "moves", stage = 1) {
   const timeLimitMs = levelConfig("blind", stage).timeLimitMs;

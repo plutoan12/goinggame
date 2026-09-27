@@ -56,7 +56,7 @@ function stageSave(mode, round, seed = 20260928, moves = 0) {
 
 test("only the fresh twenty-stage rule snapshot is accepted", () => {
   const saved = stage20Save();
-  assert.equal(SAVE_KEY, "twelve-puzzle-game-v2");
+  assert.equal(SAVE_KEY, "twelve-puzzle-game-v3");
   assert.equal(validSavedGame(saved), true);
   assert.equal(validSavedGame({ ...saved, version: 0 }), false);
   assert.equal(validSavedGame({ ...saved, round: 21 }), false);

@@ -49,11 +49,33 @@ test("web entry points bump their cache version with native reliability fixes", 
   const html = await read("index.html");
   const game = await read("game.js");
   const view = await read("leaderboard-view.js");
-  assert.match(html, /style\.css\?v=mobile-4/);
-  assert.match(html, /game\.js\?v=mobile-4/);
-  assert.doesNotMatch(html, /\?v=mobile-[123]/);
-  assert.match(game, /leaderboard\.js\?v=ranks-4/);
-  assert.match(game, /leaderboard-view\.js\?v=ranks-4/);
-  assert.match(view, /leaderboard\.js\?v=ranks-4/);
-  assert.doesNotMatch(`${game}\n${view}`, /\?v=ranks-[123]/);
+  const leaderboard = await read("leaderboard.js");
+  const engine = await read("engine.js");
+  const generator = await read("level-generator.js");
+  const session = await read("session.js");
+  const saved = await read("saved-game.js");
+  assert.match(html, /style\.css\?v=mobile-5/);
+  assert.match(html, /game\.js\?v=mobile-5/);
+  assert.doesNotMatch(html, /\?v=mobile-[1234]/);
+  assert.match(game, /stage-config\.js\?v=stages-2/);
+  assert.match(game, /engine\.js\?v=engine-2/);
+  assert.match(game, /level-generator\.js\?v=generator-2/);
+  assert.match(game, /session\.js\?v=limits-2/);
+  assert.match(game, /saved-game\.js\?v=save-4/);
+  assert.match(game, /leaderboard\.js\?v=ranks-5/);
+  assert.match(game, /leaderboard-view\.js\?v=ranks-5/);
+  assert.match(view, /leaderboard\.js\?v=ranks-5/);
+  assert.match(leaderboard, /saved-game\.js\?v=save-4/);
+  for (const source of [engine, generator, session, saved]) {
+    assert.match(source, /stage-config\.js\?v=stages-2/);
+  }
+  assert.doesNotMatch(`${game}\n${view}`, /\?v=ranks-[1234]/);
+});
+
+test("stage selector clearly presents twenty stages instead of five chapters", async () => {
+  const html = await read("index.html");
+  const game = await read("game.js");
+  assert.match(html, /전체 20단계/);
+  assert.match(html, /4단계씩 펼쳐 보기/);
+  assert.doesNotMatch(game, /\$\{chapter \+ 1\}장/);
 });

@@ -43,7 +43,7 @@ python3 -m http.server 4173 -d dist
 - 이동 제한은 적은 이동 수, 타임어택은 짧은 실제 플레이 시간 순입니다.
 - 단계·방식·같은 배치·아이템 사용 여부를 나눠 비교하고 동점은 공동 순위로 표시합니다.
 - 최근 200개 기록을 보관하고, 동일한 시도의 중복 등록을 막습니다.
-- 저장 키는 `twelve-puzzle-game-v2`, `twelve-puzzle-progress-v1`, `twelve-puzzle-rankings-v2`, `twelve-puzzle-tutorial-v1`입니다. 이전 버전 키는 읽거나 덮어쓰지 않습니다.
+- 저장 키는 `twelve-puzzle-game-v3`, `twelve-puzzle-progress-v1`, `twelve-puzzle-rankings-v3`, `twelve-puzzle-tutorial-v1`입니다. 이전 버전 키는 읽거나 덮어쓰지 않습니다.
 
 ## 픽셀 그래픽
 

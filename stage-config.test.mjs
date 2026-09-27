@@ -18,13 +18,25 @@ test("twenty stages match the approved size and rule table", () => {
     ["goal", "marked", "sealed"],
   ]);
   assert.deepEqual(STAGES.map((stage) => stage.hiddenDepth), [
-    0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6,
+    1, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6,
   ]);
   assert.deepEqual(STAGES.map((stage) => stage.name), [
     "첫걸음", "햇살길", "꽃들판", "솔숲길", "별빛뜰",
     "달맞이", "구름재", "바람고개", "수호숲", "수호문",
     "푸른마루", "별마루", "새벽뜰", "달그늘", "구름마당",
     "바람마루", "수호길", "별길", "마지막 고개", "열두 퍼즐",
+  ]);
+});
+
+test("stage picker exposes all twenty stages as numbered ranges", async () => {
+  const { stageGroups } = await import("./stage-config.js");
+  assert.equal(typeof stageGroups, "function");
+  assert.deepEqual(stageGroups(), [
+    { start: 1, end: 4, label: "1~4단계" },
+    { start: 5, end: 8, label: "5~8단계" },
+    { start: 9, end: 12, label: "9~12단계" },
+    { start: 13, end: 16, label: "13~16단계" },
+    { start: 17, end: 20, label: "17~20단계" },
   ]);
 });
 

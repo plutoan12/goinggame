@@ -1,11 +1,11 @@
 import { applyRuleMove, validRules, validRuleProgress } from "./rules.js";
-import { cloneState, isWin, revealCompleted } from "./engine.js";
-import { generateLevel } from "./level-generator.js";
-import { createRun, revealLane, validRun } from "./session.js";
-import { levelConfig, STAGES } from "./stage-config.js";
+import { cloneState, isWin, revealCompleted } from "./engine.js?v=engine-2";
+import { generateLevel } from "./level-generator.js?v=generator-2";
+import { createRun, revealLane, validRun } from "./session.js?v=limits-2";
+import { levelConfig, STAGES } from "./stage-config.js?v=stages-2";
 import { releaseConfig } from "./release-config.js";
 
-export const SAVE_KEY = "twelve-puzzle-game-v2";
+export const SAVE_KEY = "twelve-puzzle-game-v3";
 
 export function createSaveWriter(storage, key, onFailure = () => {}) {
   let storageError = false;

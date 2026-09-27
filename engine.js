@@ -6,9 +6,9 @@
  * hidden-aware completion, mixed-pet stacking; reverse-scramble generator added.
  * Tubes are stored bottom-to-top. Hidden flags never affect tile identity.
  */
-import { levelConfig } from "./stage-config.js";
+import { levelConfig } from "./stage-config.js?v=stages-2";
 
-export { STAGES, levelConfig } from "./stage-config.js";
+export { STAGES, levelConfig } from "./stage-config.js?v=stages-2";
 
 export const MODES = Object.freeze({
   blind: Object.freeze({ hidden: true }),

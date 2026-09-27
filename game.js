@@ -4,9 +4,14 @@ import {
   isTubeDone,
   isWin,
   revealCompleted,
-} from "./engine.js";
-import { STAGES, levelConfig, stageColumns } from "./stage-config.js";
-import { generateLevel } from "./level-generator.js";
+} from "./engine.js?v=engine-2";
+import {
+  STAGES,
+  levelConfig,
+  stageColumns,
+  stageGroups,
+} from "./stage-config.js?v=stages-2";
+import { generateLevel } from "./level-generator.js?v=generator-2";
 import { canRuleMove, applyRuleMove, legalRuleMoves } from "./rules.js";
 import { laneRuleView, ruleSummary } from "./rule-view.js";
 import {
@@ -19,7 +24,7 @@ import { attachTileDrag } from "./drag.js";
 import { createProgression } from "./progression.js";
 import { createTutorial } from "./tutorial.js";
 import { createTutorialView } from "./tutorial-view.js";
-import { SAVE_KEY, createSaveWriter, validSavedGame } from "./saved-game.js?v=save-3";
+import { SAVE_KEY, createSaveWriter, validSavedGame } from "./saved-game.js?v=save-4";
 import {
   GUARDIANS as PETS,
   SPECIAL_SPRITES,
@@ -34,14 +39,14 @@ import {
   elapse,
   formatTime,
   canReturnToItemsAfterLoss,
-} from "./session.js?v=limits-1";
+} from "./session.js?v=limits-2";
 import {
   createLeaderboard,
   makeRecord,
   rankRecords,
   scoreLabel,
-} from "./leaderboard.js?v=ranks-4";
-import { renderLeaderboard } from "./leaderboard-view.js?v=ranks-4";
+} from "./leaderboard.js?v=ranks-5";
+import { renderLeaderboard } from "./leaderboard-view.js?v=ranks-5";
 
 const $ = (id) => document.getElementById(id);
 let boardDrag;
@@ -950,15 +955,15 @@ document.addEventListener("keydown", (event) => {
     tell("선택을 취소했어요.");
   }
 });
-for (let chapter = 0; chapter < 5; chapter++) {
-  const startStage = chapter * 4 + 1;
-  const endStage = startStage + 3;
+for (const range of stageGroups()) {
+  const startStage = range.start;
+  const endStage = range.end;
   const group = document.createElement("details");
   group.className = "stage-chapter";
   group.dataset.start = startStage;
   group.dataset.end = endStage;
   const summary = document.createElement("summary");
-  summary.textContent = `${chapter + 1}장 · ${STAGES[startStage - 1].name}–${STAGES[endStage - 1].name}`;
+  summary.textContent = `${range.label} · ${STAGES[startStage - 1].name}–${STAGES[endStage - 1].name}`;
   const buttons = document.createElement("div");
   buttons.className = "stage-chapter-buttons";
   group.append(summary, buttons);

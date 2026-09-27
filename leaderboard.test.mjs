@@ -82,7 +82,7 @@ function memoryStorage() {
 test("only completed journey games become records; practice and unfinished games excluded", () => {
   const input = completedInput();
   assert.ok(validRecord(makeRecord(input)));
-  assert.equal(RANK_KEY, "twelve-puzzle-rankings-v2");
+  assert.equal(RANK_KEY, "twelve-puzzle-rankings-v3");
   assert.equal(makeRecord(completedInput({ round: 20 }))?.stage, 20);
   assert.equal(makeRecord({ ...input, round: 21 }), null);
   assert.equal(makeRecord({ ...input, mode: "practice" }), null);
@@ -113,7 +113,7 @@ test("only completed journey games become records; practice and unfinished games
   }), null);
 });
 test("rankings require the current rules version and never inspect old keys", () => {
-  assert.equal(RANK_VERSION, "twelve-puzzle-rules-v2");
+  assert.equal(RANK_VERSION, "twelve-puzzle-rules-v3");
   assert.equal(validRecord(entry({ rulesVersion: "sort-short-start-v3" })), false);
   assert.equal(validRecord(entry({ stage: 20 })), true);
   assert.equal(validRecord(entry({ stage: 21 })), false);
@@ -262,13 +262,13 @@ test("new ranking storage does not compare or overwrite previous large-board sco
   assert.equal(createLeaderboard(storage).records.length, 1);
   assert.equal(storage.getItem("twelve-guardians-rankings-v2"), old);
 });
-test("audit-hardened rankings ignore the previous unaudited ranking key", () => {
+test("new hidden-depth rankings ignore the previous board ranking key", () => {
   const storage = memoryStorage();
-  storage.setItem("twelve-puzzle-rankings-v1", JSON.stringify({
+  storage.setItem("twelve-puzzle-rankings-v2", JSON.stringify({
     name: "이전 이름",
     records: [{
       ...entry({ moves: 1 }),
-      rulesVersion: "twelve-puzzle-rules-v1",
+      rulesVersion: "twelve-puzzle-rules-v2",
     }],
   }));
   const board = createLeaderboard(storage);

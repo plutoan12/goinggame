@@ -1,8 +1,8 @@
-import { isWin, levelConfig } from "./engine.js";
-import { validCompletionAudit } from "./saved-game.js?v=save-3";
+import { isWin, levelConfig } from "./engine.js?v=engine-2";
+import { validCompletionAudit } from "./saved-game.js?v=save-4";
 
-export const RANK_VERSION = "twelve-puzzle-rules-v2";
-export const RANK_KEY = "twelve-puzzle-rankings-v2";
+export const RANK_VERSION = "twelve-puzzle-rules-v3";
+export const RANK_KEY = "twelve-puzzle-rankings-v3";
 const MAX_RECORDS = 200;
 
 export function cleanName(value) {

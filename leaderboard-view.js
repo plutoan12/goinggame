@@ -1,5 +1,5 @@
-import { rankRecords, scoreLabel } from "./leaderboard.js?v=ranks-4";
-import { STAGES } from "./engine.js";
+import { rankRecords, scoreLabel } from "./leaderboard.js?v=ranks-5";
+import { STAGES } from "./engine.js?v=engine-2";
 
 const node = (tag, text, className) => {
   const el = document.createElement(tag);
