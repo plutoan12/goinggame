@@ -14,6 +14,19 @@ import {
 } from "./level-generator.js";
 import { createRun } from "./session.js";
 
+const manualHiddenRatio = (state) => {
+  const tiles = state.tubes.flat().length;
+  return tiles === 0 ? 0 : state.hidden.flat().filter(Boolean).length / tiles;
+};
+
+test("hidden ratio counts every pet tile including fully visible tubes", () => {
+  const state = {
+    tubes: [[0, 1], [2, 3]],
+    hidden: [[true, false], [false, false]],
+  };
+  assert.equal(hiddenRatio(state), 0.25);
+});
+
 test("generation is deterministic, seed-dependent and reports bounded fallback metadata", () => {
   const first = generateLevel("blind", 42, 20);
   assert.deepEqual(first, generateLevel("blind", 42, 20));
@@ -70,18 +83,34 @@ test("generated marked rules use configured counts for ordinary and boss stages"
   }
 });
 
-test("sealed lanes reveal every starting tile before they unlock", () => {
-  for (const round of [13, 14, 15, 16, 18, 19, 20]) {
-    for (let seed = 1; seed <= 10; seed++) {
+test("sealed lanes preserve blind coverage while keeping their top tile visible", () => {
+  for (let round = 1; round <= 60; round++) {
+    if (!levelConfig("blind", round).ruleKinds.includes("sealed")) continue;
+    for (let seed = 1; seed <= 5; seed++) {
       const level = generateLevel("blind", 5000 + round * 100 + seed, round);
       const lane = level.rules.sealedLane;
       assert.notEqual(lane, null, `${round}/${seed}: sealed lane`);
       assert.equal(
-        level.state.hidden[lane].some(Boolean),
+        level.state.hidden[lane].at(-1),
         false,
-        `${round}/${seed}: sealed contents stay visible`,
+        `${round}/${seed}: sealed top stays visible`,
+      );
+      assert.equal(
+        level.state.hidden[lane].some(Boolean),
+        true,
+        `${round}/${seed}: sealed covered tiles stay hidden`,
       );
     }
+  }
+});
+
+test("stage sixty blind seeds meet the all-tile hidden target", () => {
+  const config = levelConfig("blind", 60);
+  for (let seed = 1; seed <= 5; seed++) {
+    const level = generateLevel("blind", seed, 60);
+    assert.equal(hiddenRatio(level.state), manualHiddenRatio(level.state), `manual/${seed}`);
+    assert.ok(hiddenRatio(level.state) >= config.minHiddenRatio, `ratio/${seed}`);
+    assert.ok(level.state.hidden.every((flags) => !flags.at(-1)), `top/${seed}`);
   }
 });
 
@@ -97,14 +126,19 @@ test("all stage seeds start with configured holding and pass generation filters"
           `holding/${mode}/${round}/${seed}`,
         );
         if (mode === "blind") {
+          assert.equal(
+            hiddenRatio(level.state),
+            manualHiddenRatio(level.state),
+            `manual-hidden/${mode}/${round}/${seed}`,
+          );
           assert.ok(
             hiddenRatio(level.state) >= config.minHiddenRatio,
             `hidden/${mode}/${round}/${seed}`,
           );
         }
         assert.ok(
-          compactSolution(level).length <= config.maxSolutionSteps,
-          `steps/${mode}/${round}/${seed}`,
+          level.solution.length <= config.maxSolutionSteps,
+          `returned-steps/${mode}/${round}/${seed}`,
         );
         let state = level.state;
         let progress = level.progress;

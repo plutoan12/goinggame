@@ -14,13 +14,8 @@ export const CANDIDATES_PER_SEED = 40;
 export const SEED_RETRIES = 16;
 
 export function hiddenRatio(state) {
-  let hidden = 0;
-  let tiles = 0;
-  state.hidden?.forEach((flags, lane) => {
-    if (!flags.some(Boolean)) return;
-    hidden += flags.filter(Boolean).length;
-    tiles += state.tubes[lane].length;
-  });
+  const hidden = state.hidden?.flat().filter(Boolean).length ?? 0;
+  const tiles = state.tubes.flat().length;
   return tiles === 0 ? 0 : hidden / tiles;
 }
 
@@ -98,10 +93,8 @@ function assignRules(level, config) {
       sealedLane: needsSeal ? seal.lane : null,
       unlockColor: needsSeal ? first.color : null,
     };
-    const state = cloneState(level.state);
-    if (rules.sealedLane !== null) state.hidden?.[rules.sealedLane]?.fill(false);
     const progress = initialRuleProgress(rules);
-    const candidate = { ...level, state, rules, progress };
+    const candidate = { ...level, state: cloneState(level.state), rules, progress };
     try {
       if (isWin(replaySolution(candidate).state)) return candidate;
     } catch {
@@ -130,8 +123,9 @@ export function generateLevel(mode = "blind", requestedSeed = 1, round = 1) {
       const level = assignRules(base, config);
       if (!level) continue;
       if (config.hidden && hiddenRatio(level.state) < config.minHiddenRatio) continue;
-      if (compactSolution(level).length > config.maxSolutionSteps) continue;
-      return { ...level, seed: resolvedSeed };
+      const solution = compactSolution(level);
+      if (solution.length > config.maxSolutionSteps) continue;
+      return { ...level, solution, seed: resolvedSeed };
     }
   }
   throw new LevelGenerationError(mode, config.tier, requestedSeed);
