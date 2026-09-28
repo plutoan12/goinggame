@@ -72,10 +72,19 @@ test("web entry points bump their cache version with native reliability fixes", 
   assert.doesNotMatch(`${game}\n${view}`, /\?v=ranks-[1234]/);
 });
 
-test("stage selector clearly presents twenty stages instead of five chapters", async () => {
+test("stage selector clearly presents sixty stages in groups of ten", async () => {
   const html = await read("index.html");
   const game = await read("game.js");
-  assert.match(html, /전체 20단계/);
-  assert.match(html, /4단계씩 펼쳐 보기/);
+  assert.match(html, /전체 60단계/);
+  assert.match(html, /10단계씩 펼쳐 보기/);
   assert.doesNotMatch(game, /\$\{chapter \+ 1\}장/);
+});
+
+test("the shipped game names the holding item and removes the old auxiliary-lane copy", async () => {
+  const [html, game] = await Promise.all([read("index.html"), read("game.js")]);
+  assert.match(html, /보관칸 \+1/);
+  assert.match(`${html}\n${game}`, /보관칸 없음/);
+  assert.doesNotMatch(`${html}\n${game}`, /보조 칸/);
+  assert.match(game, /holding-plus/);
+  assert.match(game, /addHoldingSlot/);
 });

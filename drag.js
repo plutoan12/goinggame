@@ -9,16 +9,33 @@ export function edgeSpeed(value, min, max, margin = 44) {
   return 0;
 }
 
-export function attachTileDrag(board, viewport, { canStart, canDrop, drop }) {
-  const doc = board.ownerDocument, view = doc.defaultView;
+export function attachTileDrag(surface, viewport, { canStart, canDrop, drop }) {
+  const doc = surface.ownerDocument, view = doc.defaultView;
   let gesture = null, frame = null, suppressUntil = 0;
   const point = (event) => ({ x: event.clientX, y: event.clientY });
-  const lanes = () => board.querySelectorAll("[data-lane]");
+  const targets = () => surface.querySelectorAll(
+    "[data-location-kind][data-location-index]",
+  );
+  const locationOf = (element) => {
+    const kind = element?.dataset.locationKind;
+    const index = Number(element?.dataset.locationIndex);
+    return ["tube", "holding"].includes(kind) && Number.isInteger(index) && index >= 0
+      ? { kind, index }
+      : null;
+  };
+  const sameLocation = (left, right) =>
+    left?.kind === right?.kind && left?.index === right?.index;
   function highlight() {
-    for (const lane of lanes()) {
-      const to = Number(lane.dataset.lane);
-      lane.classList.toggle("drag-target", !!gesture?.active && canDrop(gesture.from, to));
-      lane.classList.toggle("drag-over", !!gesture?.active && gesture.to === to);
+    for (const target of targets()) {
+      const to = locationOf(target);
+      target.classList.toggle(
+        "drag-target",
+        !!gesture?.active && to !== null && canDrop(gesture.from, to),
+      );
+      target.classList.toggle(
+        "drag-over",
+        !!gesture?.active && sameLocation(gesture.to, to),
+      );
     }
   }
   function update() {
@@ -26,8 +43,10 @@ export function attachTileDrag(board, viewport, { canStart, canDrop, drop }) {
     if (!g?.active) return;
     g.ghost.style.left = `${g.point.x - g.offset.x}px`;
     g.ghost.style.top = `${g.point.y - g.offset.y}px`;
-    const hit = doc.elementFromPoint(g.point.x, g.point.y)?.closest("[data-lane]");
-    const to = hit && board.contains(hit) ? Number(hit.dataset.lane) : null;
+    const hit = doc.elementFromPoint(g.point.x, g.point.y)?.closest(
+      "[data-location-kind][data-location-index]",
+    );
+    const to = hit && surface.contains(hit) ? locationOf(hit) : null;
     g.to = to !== null && canDrop(g.from, to) ? to : null;
     highlight();
   }
@@ -55,7 +74,7 @@ export function attachTileDrag(board, viewport, { canStart, canDrop, drop }) {
     frame = null;
     g.ghost?.remove();
     g.tile.style.visibility = g.visibility;
-    board.classList.remove("dragging");
+    surface.classList.remove("dragging");
     highlight();
     if (g.tile.hasPointerCapture?.(g.id)) g.tile.releasePointerCapture(g.id);
     if (g.active) suppressUntil = Date.now() + 500;
@@ -64,17 +83,17 @@ export function attachTileDrag(board, viewport, { canStart, canDrop, drop }) {
   function down(event) {
     if (gesture || event.isPrimary === false || event.button !== 0) return;
     const tile = event.target.closest(".draggable-tile");
-    const lane = tile?.closest("[data-lane]");
-    if (!lane || !board.contains(lane)) return;
-    const from = Number(lane.dataset.lane);
-    if (!canStart(from)) return;
+    const target = tile?.closest("[data-location-kind][data-location-index]");
+    if (!target || !surface.contains(target)) return;
+    const from = locationOf(target);
+    if (from === null || !canStart(from)) return;
     const rect = tile.getBoundingClientRect(), start = point(event);
     gesture = {
       id: event.pointerId, from, to: null, tile, rect, start, point: start,
       offset: { x: start.x - rect.left, y: start.y - rect.top },
       visibility: tile.style.visibility, active: false, lastFrame: null,
     };
-    // Capture the tile, not the board: a short tap still clicks its original lane.
+    // Capture the tile, not the surface: a short tap still clicks its original target.
     tile.setPointerCapture(event.pointerId);
   }
   function move(event) {
@@ -93,7 +112,7 @@ export function attachTileDrag(board, viewport, { canStart, canDrop, drop }) {
       });
       (g.tile.closest("dialog[open]") || doc.body).append(g.ghost);
       g.tile.style.visibility = "hidden";
-      board.classList.add("dragging");
+      surface.classList.add("dragging");
       frame = view.requestAnimationFrame(scrollFrame);
     }
     if (g.active) { event.preventDefault(); update(); }
@@ -123,12 +142,12 @@ export function attachTileDrag(board, viewport, { canStart, canDrop, drop }) {
       event.preventDefault(); event.stopImmediatePropagation(); suppressUntil = 0;
     }
   }
-  board.addEventListener("pointerdown", down);
-  board.addEventListener("pointermove", move, { passive: false });
-  board.addEventListener("pointerup", up);
-  board.addEventListener("pointercancel", cancel);
-  board.addEventListener("lostpointercapture", cancel);
-  board.addEventListener("click", click, true);
+  surface.addEventListener("pointerdown", down);
+  surface.addEventListener("pointermove", move, { passive: false });
+  surface.addEventListener("pointerup", up);
+  surface.addEventListener("pointercancel", cancel);
+  surface.addEventListener("lostpointercapture", cancel);
+  surface.addEventListener("click", click, true);
   view.addEventListener("blur", () => cancel());
   doc.addEventListener("visibilitychange", () => { if (doc.hidden) cancel(); });
   doc.addEventListener("keydown", (event) => { if (event.key === "Escape") cancel(); });

@@ -1,6 +1,6 @@
 import {
-  cloneState,
   topColor,
+  topAt,
   isTubeDone,
   isWin,
   revealCompleted,
@@ -12,7 +12,11 @@ import {
   stageGroups,
 } from "./stage-config.js?v=stages-2";
 import { generateLevel } from "./level-generator.js?v=generator-2";
-import { canRuleMove, applyRuleMove, legalRuleMoves } from "./rules.js";
+import {
+  canRuleTransfer,
+  applyRuleTransfer,
+  legalRuleTransfers,
+} from "./rules.js";
 import { laneRuleView, ruleSummary } from "./rule-view.js";
 import {
   makeMoveSnapshot,
@@ -39,6 +43,7 @@ import {
   elapse,
   formatTime,
   canReturnToItemsAfterLoss,
+  addHoldingSlot,
 } from "./session.js?v=limits-2";
 import {
   createLeaderboard,
@@ -78,7 +83,7 @@ let mode = "blind",
   history = [],
   audit = [],
   moves = 0,
-  extra = false;
+  holdingBoosted = false;
 let selected = null,
   sound = false,
   audio,
@@ -115,13 +120,31 @@ function petFor(color) {
 function stagePets() {
   return levelConfig(mode, round).petIds.map((id) => PETS[id]);
 }
+function sameLocation(left, right) {
+  return left?.kind === right?.kind && left?.index === right?.index;
+}
+function locationSelector(location) {
+  return `[data-location-kind="${location.kind}"][data-location-index="${location.index}"]`;
+}
+function locationElement(location) {
+  return $("playSurface").querySelector(locationSelector(location));
+}
+function locationLabel(location) {
+  return location.kind === "holding"
+    ? `${location.index + 1}번 보관칸`
+    : `${location.index + 1}번 열`;
+}
+function locationLocked(location) {
+  return location.kind === "tube" &&
+    laneRuleView(location.index, rules, ruleProgress, stagePets()).locked;
+}
 function gameOutcome() {
   return outcome(
     state,
     moves,
     run,
     mode,
-    () => legalRuleMoves(state, rules, ruleProgress),
+    () => legalRuleTransfers(state, rules, ruleProgress),
   );
 }
 
@@ -143,15 +166,16 @@ function showTutorial() {
   tutorialView.restart();
   $("dialogBody").replaceChildren(tutorialView.root);
   // Main run, timer, items, progression and leaderboard remain untouched.
-  $("dialogBody").querySelector("[data-lane='0']").focus({ preventScroll: true });
+  $("dialogBody").querySelector('[data-location-kind="tube"][data-location-index="0"]')
+    .focus({ preventScroll: true });
 }
 
 function setBusy(value) {
   busy = value;
-  $("board").setAttribute("aria-busy", String(value));
+  $("playSurface").setAttribute("aria-busy", String(value));
   for (const id of [
     "undo",
-    "extra",
+    "holdingPlus",
     "peek",
     "restart",
     "newGame",
@@ -188,13 +212,13 @@ function updateStageButtons() {
 
 function save() {
   const stored = gameSaveWriter.write({
-    version: 2,
+    version: 3,
     mode,
     seed,
     round,
     state,
     moves,
-    extra,
+    holdingBoosted,
     rules,
     ruleProgress,
     run,
@@ -209,7 +233,7 @@ function restore() {
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!validSavedGame(saved) || !progression.canAccess(saved.round)) return false;
-    ({ mode, seed, round, state, moves, extra, rules, ruleProgress, run } = saved);
+    ({ mode, seed, round, state, moves, holdingBoosted, rules, ruleProgress, run } = saved);
     attemptId = saved.attemptId;
     paused = run.rule === "timed" && run.clockStarted;
     audit = structuredClone(saved.audit);
@@ -281,7 +305,7 @@ function updateLimitDisplay() {
   $("pause").disabled =
     busy || !run.clockStarted || gameOutcome() !== "playing";
   $("boardViewport").classList.toggle("paused-board", timed && paused);
-  $("board").inert = timed && paused;
+  $("playSurface").inert = timed && paused;
 }
 function tone(kind = "move") {
   if (!sound) return;
@@ -320,7 +344,9 @@ function render() {
   boardDrag?.cancel();
   const cfg = levelConfig(mode, round);
   const board = $("board");
+  const holdingSlots = $("holdingSlots");
   board.replaceChildren();
+  holdingSlots.replaceChildren();
   board.style.setProperty("--columns", state.tubes.length);
   board.style.setProperty("--capacity", state.capacity);
   board.style.setProperty("--board-min", `${state.tubes.length * 49 - 7}px`);
@@ -352,6 +378,7 @@ function render() {
   });
   let complete = 0;
   state.tubes.forEach((tube, i) => {
+    const location = { kind: "tube", index: i };
     const done =
       tube.length > 0 &&
       isTubeDone(tube, state.capacity) &&
@@ -359,18 +386,19 @@ function render() {
     if (done) complete++;
     const ruleView = laneRuleView(i, rules, ruleProgress, stagePets());
     const target = selected !== null &&
-      canRuleMove(state, selected, i, rules, ruleProgress).allowed;
+      canRuleTransfer(state, selected, location, rules, ruleProgress).allowed;
     const lane = document.createElement("button");
     lane.type = "button";
-    lane.className = `lane ${ruleView.classes.join(" ")}${selected === i ? " selected" : ""}${target ? " target" : ""}${done ? " done" : ""}${lastMove?.completed && lastMove.to === i ? " just-completed" : ""}`;
-    lane.dataset.lane = i;
+    lane.className = `lane ${ruleView.classes.join(" ")}${sameLocation(selected, location) ? " selected" : ""}${target ? " target" : ""}${done ? " done" : ""}${lastMove?.completed && sameLocation(lastMove.to, location) ? " just-completed" : ""}`;
+    lane.dataset.locationKind = location.kind;
+    lane.dataset.locationIndex = String(location.index);
     const name = tube.length ? petFor(topColor(tube))[1] : "빈 칸";
     lane.setAttribute(
       "aria-label",
       `${i + 1}번 칸, ${name}, ${tube.length}/${state.capacity}, ${ruleView.label}${done ? ", 완성" : ""}${target ? ", 이동 가능" : ""}`,
     );
     lane.disabled = ruleView.locked;
-    lane.setAttribute("aria-pressed", selected === i);
+    lane.setAttribute("aria-pressed", sameLocation(selected, location));
     const number = document.createElement("span");
     number.className = "lane-number";
     number.textContent = done ? "" : String(i + 1);
@@ -380,7 +408,7 @@ function render() {
     if (ruleView.markedColor !== null) ruleIcons.append(specialArt("marked"));
     if (rules.sealedLane === i)
       ruleIcons.append(specialArt(ruleProgress.sealOpened ? "unlocked" : "sealed"));
-    if (selected === i) ruleIcons.append(specialArt("selection"));
+    if (sameLocation(selected, location)) ruleIcons.append(specialArt("selection"));
     number.append(ruleIcons);
     const rail = document.createElement("span");
     rail.className = "rail";
@@ -388,7 +416,7 @@ function render() {
     for (let p = tube.length - 1; p >= 0; p--) {
       const hidden = state.hidden[i][p];
       const tile = document.createElement("span");
-      tile.className = `tile${hidden ? " hidden" : ""}${lastMove?.to === i && p === tube.length - 1 ? " arrived" : ""}${lastMove?.reveal && lastMove.from === i && p === tube.length - 1 ? " revealed" : ""}`;
+      tile.className = `tile${hidden ? " hidden" : ""}${sameLocation(lastMove?.to, location) && p === tube.length - 1 ? " arrived" : ""}${lastMove?.reveal && sameLocation(lastMove.from, location) && p === tube.length - 1 ? " revealed" : ""}`;
       if (p === tube.length - 1 && !hidden) tile.classList.add("draggable-tile");
       // Never leak face-down identities into DOM text, titles, styles or attributes.
       if (hidden) tile.append(specialArt("question"));
@@ -421,9 +449,56 @@ function render() {
         ? "여기로 ↓"
         : `${tube.length}/${state.capacity}`;
     lane.append(number, rail, hint);
-    lane.addEventListener("click", () => pick(i));
+    lane.addEventListener("click", () => pick(location));
     board.append(lane);
   });
+  state.holding.forEach((color, i) => {
+    const location = { kind: "holding", index: i };
+    const target = selected !== null &&
+      canRuleTransfer(state, selected, location, rules, ruleProgress).allowed;
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.className = `holding-slot${color === null ? " holding-empty" : " occupied"}${sameLocation(selected, location) ? " selected" : ""}${target ? " target" : ""}${holdingBoosted && i === state.holding.length - 1 ? " holding-added" : ""}`;
+    slot.dataset.locationKind = location.kind;
+    slot.dataset.locationIndex = String(location.index);
+    slot.setAttribute("aria-pressed", sameLocation(selected, location));
+    slot.setAttribute(
+      "aria-label",
+      `${i + 1}번 보관칸, ${color === null ? "비어 있음" : petFor(color)[1]}${target ? ", 이동 가능" : ""}`,
+    );
+    const rail = document.createElement("span");
+    rail.className = "rail";
+    rail.setAttribute("aria-hidden", "true");
+    if (color === null) {
+      const empty = document.createElement("span");
+      empty.className = "empty-label";
+      empty.textContent = "빈 보관칸";
+      rail.append(empty);
+    } else {
+      const tile = document.createElement("span");
+      tile.className = `tile draggable-tile${sameLocation(lastMove?.to, location) ? " arrived" : ""}`;
+      tile.style.setProperty("--pet-color", petFor(color)[2]);
+      const face = document.createElement("span");
+      face.className = "tile-face";
+      face.append(petArt(cfg.petIds[color]));
+      tile.append(face);
+      rail.append(tile);
+    }
+    const hint = document.createElement("span");
+    hint.className = "holding-hint";
+    hint.textContent = target ? "여기로 ↓" : color === null ? "비어 있음" : "꺼내기";
+    slot.append(rail, hint);
+    slot.addEventListener("click", () => pick(location));
+    holdingSlots.append(slot);
+  });
+  if (!state.holding.length) {
+    const none = document.createElement("span");
+    none.className = "holding-none";
+    none.textContent = "보관칸 없음";
+    holdingSlots.append(none);
+  }
+  const holdingUsed = state.holding.filter((color) => color !== null).length;
+  $("holdingCount").textContent = `${holdingUsed} / ${state.holding.length} 사용`;
   $("complete").textContent = `${complete} / ${cfg.colors}`;
   $("moves").textContent = moves;
   $("level").textContent =
@@ -459,8 +534,8 @@ function render() {
     result !== "playing" ||
     !state.hidden.some((h) => h.some(Boolean)) ||
     (mode !== "practice" && !run.peek);
-  $("extra").disabled = extra || isWin(state);
-  $("extra").querySelector("small").textContent = extra
+  $("holdingPlus").disabled = holdingBoosted || isWin(state);
+  $("holdingPlus").querySelector("small").textContent = holdingBoosted
     ? "이번 판 사용 완료"
     : "1개 남음";
   $("sound").setAttribute("aria-pressed", sound);
@@ -474,10 +549,10 @@ function updateScrollHint() {
       : "십이지신 정렬 퍼즐";
 }
 function remember() {
-  history.push(makeMoveSnapshot({ state, moves, extra, ruleProgress }));
+  history.push(makeMoveSnapshot({ state, moves, holdingBoosted, ruleProgress }));
   if (history.length > 100) history.shift();
 }
-async function pick(i, origin) {
+async function pick(location, origin) {
   if (busy) return;
   settleClock();
   if (paused) {
@@ -493,35 +568,42 @@ async function pick(i, origin) {
     showWin();
     return;
   }
-  if (selected === i) {
+  if (sameLocation(selected, location)) {
     selected = null;
     render();
-    focusLane(i);
+    focusLocation(location);
     tell("선택을 취소했어요. 다른 동물을 골라 주세요.");
     return;
   }
   if (selected === null) {
-    if (laneRuleView(i, rules, ruleProgress, stagePets()).locked) {
+    if (locationLocked(location)) {
       tell("봉인된 열은 해제 동물을 먼저 완성해야 사용할 수 있어요.", true);
       return;
     }
-    if (!state.tubes[i].length) {
-      tell("먼저 옮길 동물이 있는 칸을 선택해 주세요.");
+    const color = topAt(state, location);
+    if (color === null) {
+      tell("먼저 옮길 동물이 있는 열이나 보관칸을 선택해 주세요.");
       syncClock();
       return;
     }
-    selected = i;
+    selected = { ...location };
     tone("select");
     render();
-    focusLane(i);
+    focusLocation(location);
     tell(
-      `${i + 1}번 칸의 ${petFor(topColor(state.tubes[i]))[1]} 선택! 공간이 남은 열로 옮겨 주세요. 다른 동물 위에도 놓을 수 있어요.`,
+      `${locationLabel(location)}의 ${petFor(color)[1]} 선택! 빈 보관칸이나 공간이 남은 열로 옮겨 주세요.`,
     );
     return;
   }
-  const permission = canRuleMove(state, selected, i, rules, ruleProgress);
+  const permission = canRuleTransfer(
+    state,
+    selected,
+    location,
+    rules,
+    ruleProgress,
+  );
   if (!permission.allowed) {
-    nudge($("board").querySelector(`[data-lane="${i}"] .rail`));
+    nudge(locationElement(location)?.querySelector(".rail"));
     tell(
       permission.reason === "sealed"
         ? "봉인된 열은 해제 동물을 먼저 완성해야 사용할 수 있어요."
@@ -529,29 +611,33 @@ async function pick(i, origin) {
           ? "표식 열에는 표시된 동물만 넣을 수 있어요."
           : permission.reason === "goal-first"
             ? "수호 목표 동물을 먼저 완성해 주세요."
-            : state.tubes[i].length >= state.capacity
-        ? "그 칸은 가득 찼어요. 초록색 칸을 골라 주세요."
-        : "맨 위 동물을 선택한 뒤 공간이 남은 다른 열로 옮겨 주세요.",
+            : location.kind === "holding" && state.holding[location.index] !== null
+              ? "그 보관칸은 사용 중이에요. 빈 보관칸을 골라 주세요."
+              : location.kind === "tube" && state.tubes[location.index].length >= state.capacity
+                ? "그 열은 가득 찼어요. 이동 가능한 칸을 골라 주세요."
+                : "맨 위 동물을 선택한 뒤 빈 보관칸이나 공간이 남은 열로 옮겨 주세요.",
       true,
     );
     syncClock();
     return;
   }
-  remember();
-  const from = selected;
-  const source = $("board").querySelector(`[data-lane="${from}"] .tile`);
-  const targetRail = $("board").querySelector(`[data-lane="${i}"] .rail`);
-  const reveal = state.hidden[from][state.tubes[from].length - 2] === true;
-  const applied = applyRuleMove(state, from, i, rules, ruleProgress);
+  const from = { ...selected };
+  const to = { ...location };
+  const applied = applyRuleTransfer(state, from, to, rules, ruleProgress);
   if (!applied) return;
+  remember();
+  const source = locationElement(from)?.querySelector(".tile");
+  const targetRail = locationElement(to)?.querySelector(".rail");
+  const reveal = from.kind === "tube" &&
+    state.hidden[from.index][state.tubes[from.index].length - 2] === true;
   state = applied.state;
   ruleProgress = applied.progress;
   moves++;
-  audit.push({ type: "move", from, to: i });
+  audit.push({ type: "move", from, to });
   if (run.rule === "timed" && mode !== "practice") run.clockStarted = true;
   selected = null;
   const completed = applied.completedColor !== null;
-  lastMove = { from, to: i, reveal, completed };
+  lastMove = { from, to, reveal, completed };
   setBusy(true);
   tone("move");
   save();
@@ -561,7 +647,7 @@ async function pick(i, origin) {
     setBusy(false);
     render();
   }
-  focusLane(i);
+  focusLocation(to);
   if (isWin(state)) {
     tone("win");
     showWin();
@@ -575,10 +661,10 @@ async function pick(i, origin) {
   }
   tell(
     completed
-      ? `${i + 1}번 칸 완성! ${petFor(topColor(state.tubes[i]))[1]} 친구들을 모두 모았어요.`
+      ? `${locationLabel(to)} 완성! ${petFor(topAt(state, to))[1]} 친구들을 모두 모았어요.`
       : reveal
-        ? `${from + 1}번 칸에 숨어 있던 ${petFor(topColor(state.tubes[from]))[1]} 등장!`
-        : `${from + 1}번 → ${i + 1}번으로 이동했어요.`,
+        ? `${locationLabel(from)}에 숨어 있던 ${petFor(topAt(state, from))[1]} 등장!`
+        : `${locationLabel(from)} → ${locationLabel(to)}으로 이동했어요.`,
   );
 }
 function start(
@@ -616,7 +702,7 @@ function start(
   history = [];
   audit = [];
   moves = 0;
-  extra = false;
+  holdingBoosted = false;
   selected = null;
   lastMove = null;
   render();
@@ -653,7 +739,7 @@ function confirmRestart(action) {
   if (busy) return;
   if (
     !moves &&
-    !extra &&
+    !holdingBoosted &&
     run.undo === 3 &&
     run.peek === 2 &&
     !run.revived &&
@@ -731,7 +817,7 @@ function currentRecord() {
     round,
     state,
     moves,
-    extra,
+    holdingBoosted,
     run,
     rules,
     ruleProgress,
@@ -761,7 +847,7 @@ function option(label, action) {
 function showRules() {
   modal(
     "끝까지 생각해서, 한 수씩",
-    `<p>${mode === "practice" ? "연습은 시간·횟수 제한이 없어요." : run.rule === "timed" ? `타임어택은 <b>${formatTime(run.timeLimitMs)}</b> 안에 완성하세요. 이동 횟수는 무제한이에요.` : `이동 제한은 <b>${run.limit}수</b> 안에 완성하세요. 시간제한은 없어요.`}</p><p><b>${ruleSummary(rules, ruleProgress, stagePets())}</b></p><ul><li>선택한 제한이 0이 되거나, 가능한 이동이 0개가 되면 게임오버.</li><li>타이머는 첫 이동부터 시작하고 도움말·일시정지·앱 전환 중 멈춰요. 다시 열면 계속하기를 누르세요.</li><li>마지막 수로 완성하면 성공! 선택·잘못 누르기는 이동 수를 쓰지 않아요.</li><li>되돌리기 3개 · 한 열 공개 2개 · 보조 칸 1개. 되돌리기는 이동 1회만 돌려주며 시간은 돌려주지 않아요.</li><li>공개·보조 칸 사용은 이전 되돌리기 기록을 초기화해요. 다시 하기는 언제나 가능해요.</li></ul>`,
+    `<p>${mode === "practice" ? "연습은 시간·횟수 제한이 없어요." : run.rule === "timed" ? `타임어택은 <b>${formatTime(run.timeLimitMs)}</b> 안에 완성하세요. 이동 횟수는 무제한이에요.` : `이동 제한은 <b>${run.limit}수</b> 안에 완성하세요. 시간제한은 없어요.`}</p><p><b>${ruleSummary(rules, ruleProgress, stagePets())}</b></p><ul><li>선택한 제한이 0이 되거나, 가능한 이동이 0개가 되면 게임오버.</li><li>타이머는 첫 이동부터 시작하고 도움말·일시정지·앱 전환 중 멈춰요. 다시 열면 계속하기를 누르세요.</li><li>마지막 수로 완성하면 성공! 선택·잘못 누르기는 이동 수를 쓰지 않아요.</li><li>되돌리기 3개 · 한 열 공개 2개 · 보관칸 +1 한 개. 보관칸에는 공개된 맨 위 동물 한 마리를 넣고 다시 어떤 열린 열로든 꺼낼 수 있어요.</li><li>공개·보관칸 +1 사용은 이전 되돌리기 기록을 초기화해요. 다시 하기는 언제나 가능해요.</li></ul>`,
     "알겠어요!",
     undefined,
     "게임오버 & 아이템",
@@ -783,7 +869,7 @@ function showLoss() {
   );
   modal(
     result === "time" ? "시간이 다 됐어요" : "잠깐, 길이 막혔어요",
-    `<p>${result === "time" ? "남은 시간이 0:00이 되었어요. 되돌리기·보조 칸으로 시간은 늘어나지 않아요." : result === "moves" ? `제한 ${run.limit}수를 모두 사용했어요.` : "옮길 수 있는 동물이나 공간이 남은 다른 열이 없어요."}</p><p>남은 되돌리기 ${run.undo}개${extra ? "" : " · 보조 칸 1개"}. ${result === "moves" ? "보조 칸만 열어서는 이동 횟수가 늘어나지 않아요." : ""}</p>`,
+    `<p>${result === "time" ? "남은 시간이 0:00이 되었어요. 되돌리기·보관칸 +1로 시간은 늘어나지 않아요." : result === "moves" ? `제한 ${run.limit}수를 모두 사용했어요.` : "보관칸을 포함해 옮길 수 있는 동물이나 공간이 없어요."}</p><p>남은 되돌리기 ${run.undo}개${holdingBoosted ? "" : " · 보관칸 +1 한 개"}. ${result === "moves" ? "보관칸을 추가해도 이동 횟수는 늘어나지 않아요." : ""}</p>`,
     "다시 하기",
     () => {
       $("dialog").close();
@@ -794,17 +880,18 @@ function showLoss() {
   if (canReturnToItemsAfterLoss(result, {
     historyLength: history.length,
     undo: run.undo,
-    extra,
+    holdingBoosted,
+    state,
+    availableMoves: (candidate) =>
+      legalRuleTransfers(candidate, rules, ruleProgress),
   }))
     option("남은 아이템 사용하러 돌아가기", () => $("dialog").close());
 }
 function newSeed() {
   return crypto.getRandomValues(new Uint32Array(1))[0];
 }
-function focusLane(i) {
-  $("board")
-    .querySelector(`[data-lane="${i}"]`)
-    ?.focus({ preventScroll: true });
+function focusLocation(location) {
+  locationElement(location)?.focus({ preventScroll: true });
 }
 $("undo").addEventListener("click", () => {
   if (busy || !history.length || isWin(state)) return;
@@ -817,7 +904,7 @@ $("undo").addEventListener("click", () => {
   const next = consumeItem(run, "undo", mode);
   if (!next) return;
   run = next;
-  ({ state, moves, extra, ruleProgress } = restoreMoveSnapshot(history.pop()));
+  ({ state, moves, holdingBoosted, ruleProgress } = restoreMoveSnapshot(history.pop()));
   audit.push({ type: "undo" });
   selected = null;
   lastMove = null;
@@ -825,8 +912,8 @@ $("undo").addEventListener("click", () => {
   save();
   tell("마지막 한 수를 되돌렸어요.");
 });
-$("extra").addEventListener("click", () => {
-  if (busy || extra || isWin(state)) return;
+$("holdingPlus").addEventListener("click", () => {
+  if (busy || holdingBoosted || isWin(state)) return;
   settleClock();
   if (gameOutcome() === "time") {
     render();
@@ -834,16 +921,14 @@ $("extra").addEventListener("click", () => {
     return;
   }
   history = []; // Item effects cannot be refunded by undoing a move.
-  state = cloneState(state);
-  state.tubes.push([]);
-  state.hidden.push([]);
-  extra = true;
-  audit.push({ type: "extra" });
+  state = addHoldingSlot(state);
+  holdingBoosted = true;
+  audit.push({ type: "holding-plus" });
   selected = null;
   lastMove = null;
   render();
   save();
-  tell("보조 칸을 열었어요. 아이템 사용 전의 되돌리기 기록은 초기화돼요.");
+  tell("보관칸을 하나 추가했어요. 아이템 사용 전의 되돌리기 기록은 초기화돼요.");
   if (gameOutcome() === "moves") showLoss();
 });
 $("restart").addEventListener("click", () => confirmRestart(() => start()));
@@ -857,11 +942,11 @@ $("peek").addEventListener("click", () => {
   settleClock();
   syncClock();
   if (busy || gameOutcome() !== "playing") return;
-  if (selected === null) {
+  if (selected === null || selected.kind !== "tube") {
     tell("먼저 물음표가 있는 열을 선택한 뒤 한 열 공개를 눌러 주세요.");
     return;
   }
-  const lane = selected;
+  const lane = selected.index;
   const nextState = revealLane(state, lane);
   if (nextState === state) {
     tell("이 열은 이미 모두 공개됐어요. 아이템은 쓰지 않았어요.");
@@ -942,7 +1027,7 @@ $("sound").addEventListener("click", () => {
 $("help").addEventListener("click", () => {
   modal(
     "같은 친구를 모아 주세요",
-    `<ol><li><b>맨 위 동물을 잡아 다른 열로 끌어 놓으세요.</b> 출발 열·도착 열을 차례로 눌러도 돼요. 공간이 남으면 다른 동물 위에도 놓을 수 있어요.</li><li>끌고 있는 동안 화면 가장자리에서 자동으로 스크롤돼요. 나머지 동물이나 열의 빈 부분은 밀어서 보드를 스크롤할 수 있어요. 바깥이나 가득 찬 열에 놓으면 이동 수를 쓰지 않아요.</li><li>동물이 있는 모든 열을 같은 동물로 가득 채우면 완성! 빈 열은 남겨도 돼요.</li><li>수호 목표는 표시된 동물을 먼저 완성하고, 표식 열에는 지정 동물만 넣을 수 있어요. 봉인 열은 해제 동물을 완성하면 열려요.</li><li>이동 제한은 남은 수가 0, 타임어택은 남은 시간이 0이면 게임오버. 두 제한을 동시에 걸지는 않아요.</li><li>옮길 곳이 없어져도 게임오버. 타이머는 첫 이동부터 시작하며 도움말·앱 전환 중 멈춰요.</li><li>되돌리기 3개 · 한 열 공개 2개 · 보조 칸 1개. 되돌려도 시간은 복구되지 않아요.</li></ol><p class="rule-note">현재 단계: ${ruleSummary(rules, ruleProgress, stagePets())}</p>`,
+    `<ol><li><b>맨 위 동물을 잡아 다른 열이나 빈 보관칸으로 끌어 놓으세요.</b> 출발·도착 칸을 차례로 눌러도 돼요. 보관한 동물은 공간이 남은 열린 열로 다시 꺼낼 수 있어요.</li><li>끌고 있는 동안 화면 가장자리에서 자동으로 스크롤돼요. 나머지 동물이나 열의 빈 부분은 밀어서 보드를 스크롤할 수 있어요. 바깥이나 가득 찬 칸에 놓으면 이동 수를 쓰지 않아요.</li><li>동물이 있는 모든 열을 같은 동물로 가득 채우고 보관칸을 모두 비우면 완성! 빈 열은 남겨도 돼요.</li><li>수호 목표는 표시된 동물을 먼저 완성하고, 표식 열에는 지정 동물만 넣을 수 있어요. 봉인 열은 해제 동물을 완성하면 열려요.</li><li>이동 제한은 남은 수가 0, 타임어택은 남은 시간이 0이면 게임오버. 두 제한을 동시에 걸지는 않아요.</li><li>보관칸을 포함해 옮길 곳이 없어지면 게임오버. 타이머는 첫 성공 이동부터 시작하며 도움말·앱 전환 중 멈춰요.</li><li>되돌리기 3개 · 한 열 공개 2개 · 보관칸 +1 한 개. 되돌려도 시간은 복구되지 않아요.</li></ol><p class="rule-note">현재 단계: ${ruleSummary(rules, ruleProgress, stagePets())}</p>`,
   );
   option("작은 판으로 이동 연습", showTutorial);
 });
@@ -999,15 +1084,16 @@ document
   .querySelector(".mini-pets")
   .replaceChildren(petArt(0), petArt(2), petArt(3));
 document.querySelector(".dialog-pet").replaceChildren(petArt(2));
-boardDrag = attachTileDrag($("board"), $("boardViewport"), {
+boardDrag = attachTileDrag($("playSurface"), $("boardViewport"), {
   canStart(from) {
     settleClock();
     return !busy && !paused && !$("dialog").open &&
       gameOutcome() === "playing" &&
-      state.tubes[from]?.length > 0 &&
-      !laneRuleView(from, rules, ruleProgress, stagePets()).locked;
+      topAt(state, from) !== null &&
+      !locationLocked(from);
   },
-  canDrop: (from, to) => canRuleMove(state, from, to, rules, ruleProgress).allowed,
+  canDrop: (from, to) =>
+    canRuleTransfer(state, from, to, rules, ruleProgress).allowed,
   drop(from, to, origin) {
     selected = from;
     void pick(to, origin);

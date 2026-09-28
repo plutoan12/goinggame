@@ -56,9 +56,9 @@
         >
       </section>
       <div class="stage-picker-heading">
-        <strong>전체 20단계</strong><span>4단계씩 펼쳐 보기</span>
+        <strong>전체 60단계</strong><span>10단계씩 펼쳐 보기</span>
       </div>
-      <nav id="stages" class="stages" aria-label="전체 20단계 난이도 선택"></nav>
+      <nav id="stages" class="stages" aria-label="전체 60단계 난이도 선택"></nav>
       <div class="stage-info">
         <strong id="dimensions">6열 × 4칸 · 4종</strong
         ><span id="stageDescription"></span>
@@ -87,13 +87,23 @@
           ><button id="gameStatus">게임오버 기준 보기</button>
         </div>
       </div>
-      <section class="board-frame" aria-label="십이지신 정렬 게임">
+      <section class="board-frame" id="playSurface" aria-label="십이지신 정렬 게임">
         <div class="board-top">
           <span><i></i><span id="modeName">수호대 여정</span></span
           ><span
             >완성 <b id="complete">0 / 4</b><span class="divider">|</span>이동
             <b id="moves">0</b></span
           >
+        </div>
+        <div
+          class="holding-tray"
+          id="holdingTray"
+          role="region"
+          aria-label="임시 보관칸"
+        >
+          <span class="holding-label">보관칸</span>
+          <div id="holdingSlots" class="holding-slots" role="group" aria-label="보관칸 목록"></div>
+          <span id="holdingCount" aria-live="polite">0 / 0 사용</span>
         </div>
         <div
           class="board-viewport"
@@ -118,8 +128,8 @@
           <span aria-hidden="true">↶</span><strong>되돌리기</strong
           ><small>마지막 한 수</small>
         </button>
-        <button id="extra">
-          <span aria-hidden="true">＋</span><strong>보조 칸</strong
+        <button id="holdingPlus">
+          <span aria-hidden="true">＋</span><strong>보관칸 +1</strong
           ><small>1개 남음</small>
         </button>
         <button id="peek">
@@ -131,7 +141,7 @@
         <button id="restart">↻ 다시 하기</button>
       </div>
       <footer>
-        <span>맨 위 동물을 꾹 잡아 끌거나, 출발·도착 열을 차례로 눌러요.</span
+        <span>맨 위 동물을 꾹 잡아 끌거나, 출발·도착 칸을 차례로 눌러요.</span
         ><button id="newGame">새로운 배치 →</button>
       </footer>
       <details class="guardian-guide">
