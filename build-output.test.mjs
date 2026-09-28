@@ -40,7 +40,16 @@ test("shipped styles keep the holding tray fixed above a bounded two-axis board"
   assert.match(tray, /z-index:\s*\d+/);
   assert.match(viewport, /overflow-x:\s*auto/);
   assert.match(viewport, /overflow-y:\s*auto/);
-  assert.match(viewport, /max-(?:block-size|height):/);
+  const fixedFallback = viewport.indexOf("max-height: 720px");
+  const vhFallback = viewport.indexOf("max-height: min(68vh, 720px)");
+  const dynamicBound = viewport.indexOf("max-height: min(68dvh, 720px)");
+  assert.ok(fixedFallback >= 0, "missing fixed viewport fallback");
+  assert.ok(vhFallback > fixedFallback, "vh fallback must follow fixed fallback");
+  assert.ok(dynamicBound > vhFallback, "dvh bound must follow compatible fallbacks");
+  assert.match(
+    viewport,
+    /max-height:\s*620px[\s\S]*max-height:\s*min\(64vh, 620px\)[\s\S]*max-height:\s*min\(64dvh, 620px\)/,
+  );
   assert.match(viewport, /-webkit-overflow-scrolling:\s*touch/);
   assert.match(declarationsFor(css, ".tools"), /position:\s*static/);
 });
@@ -73,8 +82,34 @@ test("shipped styles expose non-color holding, target and reveal states", async 
   assert.match(declarationsFor(css, ".valid-target"), /outline|border-style/);
   assert.match(declarationsFor(css, ".invalid-target"), /outline|border-style/);
   assert.match(declarationsFor(css, ".occupied"), /outline|border-style|box-shadow/);
-  assert.match(declarationsFor(css, ".holding-added"), /animation:/);
+  assert.match(declarationsFor(css, ".holding-added"), /border-style:/);
   assert.match(declarationsFor(css, ".reveal-flip"), /animation:/);
+});
+
+test("holding slot assembly is triggered only by item use, never durable render state", async () => {
+  const game = await readFile("game.js", "utf8");
+  const render = game.slice(
+    game.indexOf("function render()"),
+    game.indexOf("function updateScrollHint()"),
+  );
+  const item = game.slice(
+    game.indexOf('$("holdingPlus").addEventListener'),
+    game.indexOf('$("restart").addEventListener'),
+  );
+
+  assert.doesNotMatch(render, /holding-added|assembleHoldingSlot/);
+  assert.match(item, /holdingBoosted\s*=\s*true/);
+  assert.match(item, /render\(\);[\s\S]*assembleHoldingSlot\(/);
+  assert.equal(game.match(/assembleHoldingSlot\(/g)?.length, 1);
+});
+
+test("board viewport announces both scrolling axes", async () => {
+  const html = await readFile("index.html", "utf8");
+  assert.match(
+    html,
+    /id="boardViewport"[\s\S]*aria-label="게임판, 큰 보드는 가로와 세로로 스크롤하세요"/,
+  );
+  assert.doesNotMatch(html, /좌우로 스크롤하세요/);
 });
 
 test("shipped styles use local pixel assets and fully settle reduced-motion states", async () => {

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { flightPath, flyTile, nudge, reducedMotion } from "./motion.js";
+import * as motion from "./motion.js";
+
+const { flightPath, flyTile, nudge, reducedMotion } = motion;
 
 test("flight begins at source and ends exactly at destination", () => {
   const frames = flightPath({ left: 40, top: 200 }, { left: 240, top: 150 });
@@ -89,6 +91,61 @@ test("reduced motion applies the invalid-move final state immediately", () => {
       },
       animate() {
         assert.fail("reduced motion must not start an animation");
+      },
+    });
+    assert.equal(result, undefined);
+    assert.deepEqual([...classes], []);
+  } finally {
+    if (previous) globalThis.matchMedia = previous;
+    else delete globalThis.matchMedia;
+  }
+});
+
+test("holding slot assembly is one-shot presentation that cleans after finishing", async () => {
+  assert.equal(typeof motion.assembleHoldingSlot, "function");
+  if (typeof motion.assembleHoldingSlot !== "function") return;
+
+  let resolveFinished;
+  let animateCalls = 0;
+  const classes = new Set();
+  const element = {
+    classList: {
+      add: (name) => classes.add(name),
+      remove: (name) => classes.delete(name),
+    },
+    animate(frames, options) {
+      animateCalls++;
+      assert.equal(frames.at(-1).transform, "scale(1)");
+      assert.equal(frames.at(-1).opacity, 1);
+      assert.ok(options.duration <= 220, "slot assembly stays restrained");
+      return { finished: new Promise((resolve) => { resolveFinished = resolve; }) };
+    },
+  };
+
+  const animation = motion.assembleHoldingSlot(element);
+  assert.equal(animateCalls, 1);
+  assert.equal(classes.has("holding-added"), true);
+  resolveFinished();
+  await animation.finished;
+  await Promise.resolve();
+  assert.equal(classes.has("holding-added"), false);
+});
+
+test("reduced motion settles a holding slot immediately without a badge or animation", () => {
+  assert.equal(typeof motion.assembleHoldingSlot, "function");
+  if (typeof motion.assembleHoldingSlot !== "function") return;
+
+  const previous = globalThis.matchMedia;
+  const classes = new Set(["holding-added"]);
+  globalThis.matchMedia = () => ({ matches: true });
+  try {
+    const result = motion.assembleHoldingSlot({
+      classList: {
+        add: (name) => classes.add(name),
+        remove: (name) => classes.delete(name),
+      },
+      animate() {
+        assert.fail("reduced motion must not animate slot assembly");
       },
     });
     assert.equal(result, undefined);

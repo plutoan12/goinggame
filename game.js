@@ -23,7 +23,12 @@ import {
   restoreMoveSnapshot,
   startGeneratedLevel,
 } from "./game-state.js";
-import { flyTile, nudge, celebrate } from "./motion.js";
+import {
+  flyTile,
+  nudge,
+  assembleHoldingSlot,
+  celebrate,
+} from "./motion.js";
 import { attachTileDrag } from "./drag.js";
 import { createProgression } from "./progression.js";
 import { createTutorial } from "./tutorial.js";
@@ -458,7 +463,7 @@ function render() {
       canRuleTransfer(state, selected, location, rules, ruleProgress).allowed;
     const slot = document.createElement("button");
     slot.type = "button";
-    slot.className = `holding-slot${color === null ? " holding-empty" : " occupied"}${sameLocation(selected, location) ? " selected" : ""}${target ? " target" : ""}${holdingBoosted && i === state.holding.length - 1 ? " holding-added" : ""}`;
+    slot.className = `holding-slot${color === null ? " holding-empty" : " occupied"}${sameLocation(selected, location) ? " selected" : ""}${target ? " target" : ""}`;
     slot.dataset.locationKind = location.kind;
     slot.dataset.locationIndex = String(location.index);
     slot.setAttribute("aria-pressed", sameLocation(selected, location));
@@ -927,6 +932,10 @@ $("holdingPlus").addEventListener("click", () => {
   selected = null;
   lastMove = null;
   render();
+  assembleHoldingSlot(locationElement({
+    kind: "holding",
+    index: state.holding.length - 1,
+  }));
   save();
   tell("보관칸을 하나 추가했어요. 아이템 사용 전의 되돌리기 기록은 초기화돼요.");
   if (gameOutcome() === "moves") showLoss();

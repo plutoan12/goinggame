@@ -1880,7 +1880,6 @@ body {
   );
 }
 .holding-added {
-  animation: holding-assemble 180ms steps(3, end) both;
   border-style: dashed;
 }
 .holding-added::before {
@@ -1908,7 +1907,9 @@ body {
 }
 .board-viewport {
   position: relative;
-  max-block-size: min(68dvh, 720px);
+  max-height: 720px;
+  max-height: min(68vh, 720px);
+  max-height: min(68dvh, 720px);
   overflow-x: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1925,18 +1926,6 @@ body {
 .tools {
   position: static;
   bottom: auto;
-}
-@keyframes holding-assemble {
-  from {
-    clip-path: inset(48%);
-    transform: scale(0.92);
-    opacity: 0.5;
-  }
-  to {
-    clip-path: inset(0);
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 @keyframes reveal-flip {
   from { transform: perspective(240px) rotateY(-90deg); }
@@ -1956,7 +1945,9 @@ body {
     flex-basis: 58px;
   }
   .board-viewport {
-    max-block-size: min(64dvh, 620px);
+    max-height: 620px;
+    max-height: min(64vh, 620px);
+    max-height: min(64dvh, 620px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

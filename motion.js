@@ -79,6 +79,24 @@ export function nudge(element) {
   return animation;
 }
 
+export function assembleHoldingSlot(element) {
+  if (!element?.classList) return;
+  element.classList.remove("holding-added");
+  if (!element.animate || reducedMotion()) return;
+
+  element.classList.add("holding-added");
+  const animation = element.animate(
+    [
+      { clipPath: "inset(48%)", transform: "scale(0.92)", opacity: 0.5 },
+      { clipPath: "inset(0)", transform: "scale(1)", opacity: 1 },
+    ],
+    { duration: 180, easing: "steps(3, end)" },
+  );
+  const clearState = () => element.classList.remove("holding-added");
+  animation.finished?.then(clearState, clearState);
+  return animation;
+}
+
 export function celebrate(host) {
   host.querySelector(".celebration")?.remove();
   if (reducedMotion()) return;
