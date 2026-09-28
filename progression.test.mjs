@@ -29,26 +29,26 @@ test("progression never reads or mutates previous game keys", () => {
   assert.deepEqual(calls.map(([, key]) => key), [PROGRESS_KEY, PROGRESS_KEY]);
   assert.equal(calls.some(([, key]) => key.startsWith("twelve-guardians-")), false);
 });
-test("wins unlock one stage at a time, preserve replays and survive reopening", () => {
+test("wins unlock all sixty stages one at a time, preserve replays and survive reopening", () => {
   const storage = memory();
   let p = createProgression(storage);
-  for (let stage = 1; stage <= 20; stage++) {
+  for (let stage = 1; stage <= 60; stage++) {
     assert.equal(p.complete(stage, won), true);
     assert.equal(p.complete(stage, won), false);
     p = createProgression(storage);
     assert.equal(p.cleared, stage);
-    assert.equal(p.unlocked, Math.min(20, stage + 1));
+    assert.equal(p.unlocked, Math.min(60, stage + 1));
     assert.equal(p.canAccess(1), true);
   }
-  assert.equal(levelConfig("blind", 99).tier, 20);
-  assert.equal(p.canAccess(21), false);
+  assert.equal(levelConfig("blind", 99).tier, 60);
+  assert.equal(p.canAccess(61), false);
   assert.equal(p.canAccess(99), false);
-  assert.equal(p.complete(21, won), false);
+  assert.equal(p.complete(61, won), false);
   assert.equal(p.complete(99, won), false);
 });
 test("corrupt or incompatible progress cannot unlock all stages", () => {
-  for (const value of ["{", "null", '{"version":1,"cleared":-1}', '{"version":1,"cleared":21}',
-    '{"version":1,"cleared":99}', '{"version":1,"cleared":1.5}', '{"version":2,"cleared":20}']) {
+  for (const value of ["{", "null", '{"version":1,"cleared":-1}', '{"version":1,"cleared":61}',
+    '{"version":1,"cleared":99}', '{"version":1,"cleared":1.5}', '{"version":2,"cleared":60}']) {
     const storage = memory(); storage.setItem(PROGRESS_KEY, value);
     assert.equal(createProgression(storage).unlocked, 1);
   }
