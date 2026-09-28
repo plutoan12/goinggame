@@ -62,6 +62,28 @@ test("publisher, support email and bundle identifier stay unchanged", async () =
   assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = com\.onewaycompany\.twelveguardians;/);
 });
 
+test("store readiness accepts only the approved 14-plus policy contract", () => {
+  assert.equal(typeof releaseCheck.storeReleaseIssues, "function");
+  if (typeof releaseCheck.storeReleaseIssues !== "function") return;
+  const config = {
+    audience: "14-plus",
+    privacyUrl: "https://plutoan12.github.io/goinggame/privacy.html",
+    ads: { enabled: false },
+  };
+  const policy = [
+    "시행일: 2026년 9월 29일",
+    "열두 퍼즐의 주 이용 대상은 만 14세 이상입니다.",
+    "게임 기록은 운영자 서버로 전송하지 않습니다.",
+    "문의 정보는 답변 완료 후 최대 1년 동안 보관합니다.",
+  ].join("\n");
+  assert.deepEqual(releaseCheck.storeReleaseIssues(config, policy), []);
+  assert.ok(releaseCheck.storeReleaseIssues({ ...config, audience: "unset" }, policy).length);
+  assert.ok(releaseCheck.storeReleaseIssues({ ...config, privacyUrl: "" }, policy).length);
+  assert.ok(releaseCheck.storeReleaseIssues(config, `출시 전 검토 초안\n${policy}`).length);
+  assert.ok(releaseCheck.storeReleaseIssues(config, policy.replace("만 14세 이상", "전 연령")).length);
+  assert.ok(releaseCheck.storeReleaseIssues(config, policy.replace("답변 완료 후 최대 1년", "문의 목적 달성 시까지")).length);
+});
+
 test("web entry points bump their cache version with native reliability fixes", async () => {
   const html = await read("index.html");
   const game = await read("game.js");

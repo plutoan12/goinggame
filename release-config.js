@@ -3,8 +3,8 @@ export const releaseConfig = {
   appName: "열두 퍼즐",
   publisher: "원웨이컴퍼니",
   supportEmail: "qkdqor19@icloud.com",
-  privacyUrl: "",
-  audience: "unset", // Decide and review age handling before enabling ads.
+  privacyUrl: "https://plutoan12.github.io/goinggame/privacy.html",
+  audience: "14-plus",
   ads: {
     enabled: false,
     testMode: true,

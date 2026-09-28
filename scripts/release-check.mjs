@@ -95,6 +95,19 @@ export function operatorDocumentIssues(file, text) {
   return issues.map((issue) => `${file}: ${issue}`);
 }
 
+export function storeReleaseIssues(release, policy) {
+  const issues = [];
+  if (release.audience !== "14-plus") issues.push("주 이용 연령을 만 14세 이상으로 확정해야 함");
+  if (release.privacyUrl !== "https://plutoan12.github.io/goinggame/privacy.html") {
+    issues.push("승인된 개인정보처리방침 공개 HTTPS URL 필요");
+  }
+  if (policy.includes("출시 전 검토 초안")) issues.push("개인정보처리방침 초안 검토·확정 필요");
+  if (!policy.includes("만 14세 이상")) issues.push("개인정보처리방침에 대상 연령 명시 필요");
+  if (!policy.includes("운영자 서버로 전송하지 않습니다")) issues.push("현재 서버 전송 여부 명시 필요");
+  if (!policy.includes("답변 완료 후 최대 1년")) issues.push("문의 정보 보유 기간 명시 필요");
+  return issues;
+}
+
 async function main() {
 const root = new URL("../", import.meta.url);
 const read = (file) => readFile(new URL(file, root), "utf8");
@@ -131,9 +144,7 @@ if (/보조 칸/.test(`${builtPage}\n${builtGame}`) || /\\uBCF4\\uC870\s+\\uCE78
 if (config.ads.enabled !== false) blockers.push("이번 릴리스의 광고는 비활성 상태여야 함");
 if (config.publisher !== "원웨이컴퍼니" || config.supportEmail !== "qkdqor19@icloud.com") blockers.push("운영자와 지원 연락처를 승인된 값으로 유지해야 함");
 for (const { file, text } of operatorDocs) blockers.push(...operatorDocumentIssues(file, text));
-if (config.audience === "unset") storeBlockers.push("주 이용 연령 / 스토어 대상 연령 결정 필요");
-if (!/^https:\/\/[^\s]+$/.test(config.privacyUrl)) storeBlockers.push("검토 완료된 개인정보처리방침의 공개 HTTPS URL 필요");
-if (policy.includes("출시 전 검토 초안")) storeBlockers.push("개인정보처리방침 초안 검토·확정 필요");
+storeBlockers.push(...storeReleaseIssues(config, policy));
 if (page.includes("앱 준비 중") || page.includes("광고 배너 연결 위치")) blockers.push("출시 화면의 개발용 준비 문구·광고 자리 표시 정리 필요");
 if (config.ads.enabled) {
   if (!config.ads.audienceReviewed || config.audience !== "general") blockers.push("광고 대상 연령 처리 미검토 (아동 대상 경로 미구현)");

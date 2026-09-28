@@ -47,7 +47,7 @@ cd android && ./gradlew bundleRelease
 
 ## 광고와 대상 연령
 
-현재 `release-config.js`는 `enabled=false`, `audience="unset"`, `audienceReviewed=false`입니다. 플레이 화면에는 광고나 광고 보상 버튼이 없습니다. `release:check`는 광고 비활성화를 기술 릴리스 조건으로 검사하고, 연령·개인정보 항목은 스토어 차단 항목으로 따로 보고합니다. AdMob/UMP 플러그인 코드는 비활성 상태로 남아 있으므로 활성화 전 실제 통신과 SDK 개인정보 보고서를 확인해야 합니다.
+현재 `release-config.js`는 `enabled=false`, `audience="14-plus"`, `audienceReviewed=false`입니다. 주 이용 대상은 만 14세 이상이고 개인정보처리방침 주소는 `https://plutoan12.github.io/goinggame/privacy.html`입니다. 플레이 화면에는 광고나 광고 보상 버튼이 없습니다. AdMob/UMP 플러그인 코드는 비활성 상태로 남아 있으므로 활성화 전 실제 통신과 SDK 개인정보 보고서를 확인해야 합니다.
 
 광고를 향후 별도 버전에서 검토하려면 대상 연령, UMP/ATT, 플랫폼 App ID, 광고 단위, 스토어 개인정보 표시, 아동 정책, 실패·중복 보상 방어를 함께 검증해야 합니다. 현재 버전의 완료 조건에는 포함하지 않습니다.
 
@@ -65,8 +65,6 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -dest
 
 ## 스토어 차단 항목
 
-- 주 이용 연령 및 스토어 대상 연령 확정
-- 검토 완료된 개인정보처리방침과 공개 HTTPS URL
 - Apple 배포 Team·프로비저닝 및 App Store Connect 권한
 - Android 운영자 업로드 키·서명된 릴리스 AAB 및 Google Play 권한
 - 광고를 별도 버전에서 켤 경우 UMP/ATT, 플랫폼 App ID·광고 단위와 스토어 개인정보 표시 재검증
