@@ -1,133 +1,93 @@
-# iOS·Android 빌드 검증 · 2026-09-28
+# iOS·Android 빌드 검증 · 2026-09-29
 
-## 현재 열두 퍼즐 20단계 픽셀 빌드
+## 릴리스 대상
 
-- 웹 번들에 20단계, 14종 픽셀 동물, 목표·표식·봉인 규칙, Galmuri11 글꼴, 기기 로컬 순위를 반영.
-- 자동 생성 보드 2,000개를 플레이어와 같은 규칙 엔진으로 재생해 풀이 가능성을 검사.
-- 현재 앱명은 `열두 퍼즐`, Bundle ID는 `com.onewaycompany.twelveguardians`로 유지.
-- 전체 자동 테스트 121/121, 웹 빌드, iOS·Android Capacitor 동기화 성공. Xcode 27.0 확인.
-- iOS Simulator용 Debug 네이티브 빌드 성공. 앱 이름·Bundle ID 확인 후 iPhone 18 Pro / iOS 27.0 Simulator에 설치·실행했고, 첫 실행 픽셀 튜토리얼 화면을 캡처해 확인.
-- Temurin JDK 21.0.12.1, Android SDK Platform 36과 Build-Tools 35/36을 사용자 영역에 설치. Android Debug APK 빌드 성공 후 v2 서명, 패키지 ID와 `열두 퍼즐` 앱 이름을 확인. 검증본은 `release-artifacts/TwelvePuzzle-debug.apk`이며 SHA-256은 `85c560f6c3df00559e30a9e7dc9945b08387d0cb47df0f50838c442ba7b533d0`.
-- Android 16 / API 36 Google APIs arm64 일반 에뮬레이터에 APK를 설치해 명시적으로 실행했다. 첫 실행 픽셀 튜토리얼과 20단계 선택 화면을 캡처했고 앱이 전경에 유지되며 앱 프로세스의 치명적 오류가 없음을 확인했다.
-- 브라우저에서 1·5·9·13·17·20단계의 기본·목표·표식·봉인 조합을 확인. 320px와 390px에서 문서 가로 넘침 없이 긴 게임판만 가로 스크롤하며, 320px 도움말·순위 창도 확인.
-- 광고는 비활성화되어 있고 플레이어에게 광고를 약속하는 버튼이나 문구가 없음.
-- iPhone 15 Pro가 연결된 상태에서 현재 20단계 빌드의 자동 서명을 시도했으나, Xcode에 개발 인증서 Team 계정 세션이 없어 실패. 로컬 프로비저닝 프로파일의 Team도 현재 Keychain 개발 인증서 Team과 달라 수동 재사용할 수 없음. Xcode에 현재 인증서 Team 계정을 다시 연결해 프로파일을 갱신해야 함.
-- 따라서 현재 20단계 빌드의 실기기 업데이트 설치·실행은 수행하지 못함. 아래 서명·설치 성공 이력은 이전 빌드 기록임.
-- Android 에뮬레이터의 설치·첫 실행·화면 렌더링은 확인했지만 실제 Android 휴대폰의 손가락 드래그, 회전·잠금 복귀, 장시간 플레이 성능은 확인하지 않음.
-- 현재 빌드의 실제 iPhone 손가락 드래그, 회전·잠금 복귀, 장시간 플레이 성능은 사용자 수동 확인이 필요.
+- 앱명: **열두 퍼즐**
+- 운영자: **원웨이컴퍼니**
+- 문의: **qkdqor19@icloud.com**
+- Bundle/Application ID: `com.onewaycompany.twelveguardians`
+- 내용: 60단계, 자유 보관칸, `보관칸 +1`, v4 활성 게임·로컬 순위
+- 광고: `release-config.js`의 `enabled=false` 유지. 실제 광고 송출·보상·SDK 통신은 검증하거나 활성화하지 않음.
 
-## TestFlight 사전 검증 (이전 5단계 빌드)
+## 자동 검증
 
-- 자동 검사 64/64, 웹 번들·네이티브 동기화 성공.
-- Release / generic iOS / arm64 미서명 Archive 명령 종료 코드 0. 앱 ID와 버전 1.0 (1), 최신 JS 번들 일치, 앱과 dSYM UUID 일치 확인.
-- 광고 비활성화 유지. SDK privacy manifest 포함 확인, 실제 네트워크·개인정보 통합 보고서 검토는 미완료.
-- 미서명 아카이브는 배포용 설치 파일이 아니며, 배포 서명·Apple Validate·TestFlight 업로드·TestFlight 설치는 하지 않음.
-- 경고·검증 산출물 경로·남은 확인 사항: [TESTFLIGHT.md](TESTFLIGHT.md).
+`git diff --check && npm test && npm run build && npm run release:check`가 통과했다.
 
-## 확인 완료
+- Node 테스트: 155/155 통과.
+- 릴리스 정적 검사: 60단계, `twelve-puzzle-game-v4`, `twelve-puzzle-rankings-v4`, `twelve-puzzle-rules-v4`, 보관칸 마크업, 이전 아이템 문구 제거, 광고 비활성, 앱 ID·운영자·문의 정보 확인.
+- 생성기 스트레스: 고정 시드 1~20, 여정/연습 두 모드, 1~60단계의 총 2,400개 보드를 모두 생성하고 반환된 해답을 재생했다.
+  - 여정: 1,200/1,200, 약 7.6초, 해답 13~203수(평균 84.8), 숨김 20.00~93.30%.
+  - 연습: 1,200/1,200, 약 7.3초, 해답 13~194수(평균 83.6), 숨김 0%.
+  - 두 모드 모두 설정 범위·압축 해답 길이·단계별 최소 숨김 비율·최종 승리를 통과했고 대체 시드 사용과 재시도 고갈은 0건이었다.
 
-- Xcode 27.0 (27A266a), iOS SDK 27.0.
-- 앱 ID: com.onewaycompany.twelveguardians.
-- 자동 테스트 40/40 통과, 웹 번들 및 Capacitor 동기화 통과.
-- generic/platform=iOS Debug 빌드 성공 (arm64, CODE_SIGNING_ALLOWED=NO).
-- generic/platform=iOS Simulator Debug 빌드 성공.
-- iOS 27.0 / iPhone 18 Pro 시뮬레이터에 설치 후 실행. 게임판·캐릭터·아이템 버튼·이동 제한 표시를 화면으로 확인.
-- SceneDelegate에서 storyboard가 만든 창을 재사용하도록 변경해 중복 WebView 생성을 제거.
-- 상단 safe-area 패딩 및 고정 상태창 위치 보완 후 제목과 카메라 영역이 겹치지 않는 것을 확인.
-- 연결된 아이폰 15 Pro / iOS 26.6.2 개발자 모드 활성화 확인.
-- 사용자 승인 후 Personal Team의 Apple Development 인증서 생성 및 자동 프로비저닝 완료.
-- 서명된 arm64 Debug 빌드 성공. `codesign --verify --deep --strict` 통과.
-- 아이폰 15 Pro에 `devicectl device install app`으로 설치 성공.
-- 첫 실행 요청은 iOS 보안 검증에서 거절됐으나, 사용자가 기기에서 개발자 신뢰를 완료한 후 재시도 성공. `devicectl`의 실행 성공 및 설치 경로와 일치하는 앱 프로세스(PID 689)를 확인.
-- 설치 프로파일 만료: 2026-10-03 17:22:26 KST. 이 개인 테스트 빌드는 만료 전에 재서명·재설치가 필요하며 스토어 배포본이 아님.
+`release:check`는 광고가 꺼진 기술 릴리스 조건과 스토어 공개 조건을 분리한다. 아래 연령·개인정보 항목은 `STORE-BLOCKED`로 표시하지만 기술 빌드를 실패시키지는 않는다.
 
-## 아직 확인하지 못한 항목
+## 네이티브 동기화와 환경
 
-- 실기기 게임 화면·게임 조작·성능·저장/복원·회전·잠금/복귀. 앱 프로세스 실행과 게임 화면/조작 검증은 구분함.
-- 시뮬레이터 자동 입력에 따른 타일 이동 결과는 확인되지 않아 조작 테스트 완료로 보지 않음.
-- 새 시뮬레이터에서 초기 WebView 표시가 지연됐고 한 번은 약 15초의 로딩이 기록됨. 실제 아이폰에서 초기/재실행 시간 측정 필요.
-- AdMob SDK는 컴파일됐지만 광고는 계속 비활성화. 실제 UMP/광고 실행 미검증.
-- 외부 의존성의 deprecated API 경고(AdMob 배너/연령 설정)가 있으며 빌드 오류는 아님. 향후 SDK 업데이트 시 검토.
-- 배포용 IPA, TestFlight 업로드, App Store/Google Play 제출 없음.
+`npm run native:sync`가 웹 번들을 iOS·Android 프로젝트에 복사하고 Capacitor 8.5.2 및 AdMob 8.1.0 플러그인 구성을 동기화했다. 동기화 결과 추적 중인 네이티브 파일의 추가 차이는 없었다.
 
-## 자유 쌓기 업데이트 (같은 날)
+API 36 에뮬레이터를 기동한 뒤 `npm run native:doctor`가 다음 항목을 모두 통과했다.
 
-- 종류가 달라도 공간이 남은 다른 열로 한 마리씩 이동하도록 변경. 가득 찬 열·자기 열·숨겨진 맨 위 타일은 계속 차단.
-- 목표는 동일: 비어 있지 않은 모든 열을 한 종류로 가득 채우기. 이동·시간 제한은 기존 값을 유지.
-- 안내/도움말/실패 문구 및 이동 불가 회귀 테스트 수정. 42/42 테스트 통과(1,000개 생성 보드 해법 재생 포함).
-- 자유 쌓기 순위는 v2 저장 키로 분리하고 이전 순위 데이터는 보존, 이름만 이관.
-- 웹 번들·네이티브 동기화·서명 빌드·서명 검증·실기기 업데이트 설치 완료. 앱을 삭제하지 않았으며 새 규칙의 실기기 터치 검증은 별도 필요.
+- Xcode 27.0 (27A266a)
+- Temurin JDK 21.0.12.1
+- Android SDK Platform 36
+- Android 16 / API 36 에뮬레이터 연결
+
+## Android Debug
+
+`npm run android:debug`는 `BUILD SUCCESSFUL`로 끝났다.
+
+- APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+- 크기: 약 15MB
+- SHA-256: `ef2b16eb2ba4bd75d3147f757ba2d3b82149717e1b80cf563adec14a83e1b1ab`
+- 패키지: `com.onewaycompany.twelveguardians`, 버전 1.0 (1), compile SDK 36
+- 표시 이름: `열두 퍼즐`
+- `apksigner verify`: v2 서명 통과
+
+이 Debug APK는 Google Play 제출용 AAB가 아니며 운영자 업로드 키로 서명한 배포본도 아니다.
+
+## iOS 미서명 빌드와 시뮬레이터
+
+요구된 두 명령 모두 `** BUILD SUCCEEDED **`로 끝났다.
+
+- generic iOS: `release-artifacts/ios-derived/Build/Products/Debug-iphoneos/App.app` (약 14MB)
+- generic iOS Simulator: `release-artifacts/ios-derived/Build/Products/Debug-iphonesimulator/App.app` (약 21MB)
+
+iPhone 18 Pro / iOS 27.0 Simulator에 시뮬레이터 앱을 설치하고 `com.onewaycompany.twelveguardians`를 실행했다. 최초 3초 캡처는 배경만 표시했지만 약 18초 뒤 메인 열→보관칸 이동을 안내하는 새 튜토리얼, 보관칸과 60단계 구간 UI가 렌더링됐다. 증거 이미지는 Git에서 제외되는 `.superpowers/sdd/2026-09-28-holding-slots-60-stages/task-7-ios-simulator.png`에 보관했다.
+
+## 실제 iPhone 상태
+
+추가 계정 등록이나 결제 없이 이미 설치된 자격만 사용했다.
+
+- 연결 기기: iPhone / iOS 26.6.2
+- 기존 Apple Development 인증서와 해당 Bundle ID·기기용 프로비저닝 프로파일 일치 확인
+- 프로파일 만료: 2026-10-03 17:22:26 KST
+- 자동 프로비저닝 갱신 옵션 없이 서명된 Debug 빌드 성공
+- 서명 앱: `/Users/an-youwon/Library/Developer/Xcode/DerivedData/GoingGame-task7-device/Build/Products/Debug-iphoneos/App.app`
+- `codesign --verify --deep --strict` 통과
+- 앱 데이터를 삭제하지 않고 설치 성공, Bundle ID로 실행 성공, 기기 프로세스 경로 확인
+
+남은 단일 실기기 차단 항목은 사람이 화면을 보며 손가락으로 수행해야 하는 상호작용 점검이다. 이 실행 환경은 실제 iPhone 화면을 관찰하거나 터치를 입력할 수 없으므로 1·10·30단계와 디버그 해제 60단계에서 메인 열↔보관칸 탭/드래그, 자동 공개, +1 칸, 되돌리기, 저장/재개, 교착 복구, 단계 해제와 순위 분류를 확인하지 않았다. 서명·빌드·설치·실행은 완료됐지만 이 항목을 실기기 플레이 완료로 간주하지 않는다.
 
 ## 재현 명령
 
-### 드래그 입력 업데이트
-
-- Pointer Events 드래그, 손가락 추적 타일, 목적지 강조, 가장자리 자동 스크롤 추가. 두 번 터치와 키보드 입력 유지.
-- 49/49 자동 테스트 통과. 탭/드래그 구분, 취소/잘못된 드롭/중복 포인터/시간 종료/포커스 상실/앱 전환/자동 스크롤 포함.
-- Chrome 실제 포인터 드래그로 1열 → 4열 이동과 이동 수 0 → 1 확인. 이어서 기존 터치 방식으로 1열 → 5열(다른 동물 위) 이동, 이동 수 1 → 2 확인.
-- 네이티브 동기화·iOS 서명 빌드·서명 검증 및 아이폰 업데이트 설치 완료. iPhone의 실제 손가락 드래그 감각·가장자리 스크롤은 사용자 확인이 추가로 필요.
-
-### 순차 단계·그림 통일 업데이트
-
-- 입문만 기본 해제, 각 단계 정상 클리어 시 다음 단계 해제. 여정·연습 공통 진행, 해제 기록 영구 저장 및 저장 실패 경고.
-- v5 게임 저장 도입. 이전 높은 단계 선택만으로는 해제하지 않고 이전 저장 키는 보존.
-- 53/53 자동 테스트 통과. 순차 해제/재실행/중복 완료/실패·건너뛰기 방지/손상 저장/저장 불가 검증.
-- 브라우저에서 2~5단계 disabled 확인, 이동 후 새로고침해도 1수 진행과 단계 잠금 유지 확인.
-- 14종을 내장 image_gen으로 통일한 4×4 투명 아틀라스 v3 적용. 실제 화면과 PNG alpha 확인. 이전 에셋 보존.
-- iOS 서명 빌드 및 코드 서명 검증 통과, 실기기 업데이트 설치 완료. 변경된 단계 클리어 흐름의 아이폰 수동 플레이는 별도 확인 필요.
-
-### 첫걸음 튜토리얼 업데이트
-
-- 4열 × 3칸, 고양이·병아리 2종, 3수 안내판을 본게임과 분리. 첫 실행 안내 및 도움말 재연습, 완료 마커만 저장.
-- 자동 검사 59/59 통과: 잘못된 안내 이동 거절, 완료·재연습·저장 불가, 본게임/단계/순위 저장 불변, 모달 최상위 레이어의 드래그/이동 그림 포함.
-- IAB에서 드래그·두 번 클릭으로 완료, 새로고침 후 안내 자동 표시 중단, 기존 본게임 1수와 2~5단계 잠금 유지 확인.
-- 키보드 Enter로 3수 완료 후 `dialogAction`에 초점 이동 확인. 재연습 중 본게임 잔여 시간 89412.79999998212ms 및 이동 1수 유지 확인.
-- 320px 너비 검증: 튜토리얼 영역 clientWidth/scrollWidth 모두 244px, 가로 넘침 없음. 실제 iPhone 손가락 감각 검증은 별도로 필요.
-- 본게임 제한 수/시간 값은 이번 변경에서 조정하지 않음. 실제 플레이 기록을 모은 후 보정할 예정이며 TestFlight 업로드는 아직 하지 않음.
-- 최종 수정 반영 후 iOS Debug 서명 빌드·서명 검증·아이폰 15 Pro 업데이트 설치 성공. 설치는 앱 삭제 없이 수행했으며 실기기 수동 플레이 검증과 구분함.
-- 설치 직후 자동 실행은 기기 잠금(`FBSOpenApplicationErrorDomain: Locked`)으로 거절됨. 사용자가 잠금을 풀고 앱을 직접 열어 최종 빌드를 확인해야 함.
-- 이후 사용자가 잠금을 해제한 뒤 `devicectl device process launch` 재시도 성공. 현재 Device Hub는 실기기 iOS 26.6.2 화면 공유에 iOS 27 이상이 필요하다고 표시하므로, 이 도구로 실기기 화면·손가락 조작을 직접 검증하지는 못함. 사용자 플레이 확인 요청 중.
-
-### 입문 전체 플레이 검증 (브라우저, 2026-09-26)
-
-- 별도 로컬 테스트 주소(127.0.0.1:4174)에서 사용자 기존 기록과 분리해 검증. 첫 배치 시드 26491, 여정 / 이동 제한 기본값 62수. 시간 제한 없이 진행.
-- 생성기의 검증된 풀이 경로를 실제 UI 클릭으로 46수 재생. 30수에 2/6열, 45수에 5/6열 완성인데도 계속 플레이됨. 46수에서 6/6열 모두 같은 동물로 가득 차고 두 열은 빈 채로 클리어됨. 아이템 미사용.
-- 클리어 순위 1건 등록, 새로고침해도 중복 없음. ‘다음 단계로’로 2단계 산책 진입, 입문 클리어 표시와 3~5단계 잠금 확인.
-- 자동 재생 벽시계 시간 64초(도구 실행·상태 확인·대화 간격 포함). 정답 경로를 미리 아는 자동 입력이므로 사람의 사고 시간/평균 플레이 시간/적정 타임어택 제한으로 사용하지 않음. 실제 사용자 소요 시간은 아직 미측정.
-- 본게임 규칙·보드 크기·제한값·아이폰 설치본은 이 검증에서 변경하지 않음.
-
-### 초반 두 단계 단축 (2026-09-26)
-
-- 입문 4종 × 용량4 = 16마리(6열), 산책 6종 × 용량5 = 30마리(8열). 3~5단계, 전체 정렬 승리 규칙, 시간 제한 없는 기본 이동 모드는 유지.
-- 64/64 자동 테스트 통과. 1,000개 생성 보드의 실제 해법 재생, 단축/후반 유지, 이전 저장의 원본 불변/새 판 리셋/완료 단계 유지, 순위 버전 분리 포함. 별도 읽기 전용 코드 검토에서 결함 없음.
-- v6 저장 키 사용. 예전 큰 초반 판은 원본 키를 남기고 같은 단계·시드·모드·도전 방식의 짧은 새 판으로 시작하며 이동·아이템·시도 ID는 리셋. 해금 유지, 화면 안내 확인. 기존 큰 판 재개 UI는 없음.
-- v3 순위 사용, v2/v1 이름만 이어받고 점수는 비교하지 않음. 이전 키는 보존하되 과거 순위 조회 UI는 없음.
-- 브라우저에서 이전 산책 저장을 8열×5칸으로 이관, 입문 클리어와 후반 잠금 보존 확인. 별도 신규 화면에서 시드26491 입문 20수/30수 한도, 아이템 없이 4/4종 완료 및 산책 해금 안내 확인.
-- 같은 시드의 알려진 풀이가 이전 46수에서 20수로 감소. 시드1~50의 풀이 길이 중앙값은 입문21수·산책33수. 모두 생성기의 검증된 경로이며 최적 해법이나 사람의 플레이 시간 측정이 아님.
-- 웹 번들·Capacitor 동기화·iOS Debug 서명 빌드·서명 검증 및 아이폰 15 Pro 업데이트 설치 성공. 앱 삭제 없이 설치했으며 실기기 플레이 소요 시간은 미측정.
-
-### 빌드 명령
-
 ```sh
-npm test
-npm run native:sync
+git diff --check && npm test && npm run build && npm run release:check
+npm run native:sync && npm run native:doctor
+npm run android:debug
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath release-artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath release-artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build
 ```
 
-### 서명 빌드와 설치
+실기기 빌드는 저장소에 Team ID·기기 UDID를 고정하지 않는다. Xcode에 이미 연결된 본인 Team과 기기를 사용하며 인증서 개인키·프로비저닝 자료를 저장소나 문서에 복사하지 않는다.
 
-프로젝트의 Documents 하위 빌드에는 `com.apple.FinderInfo` 및 file-provider 속성이 붙어 CodeSign이 실패했습니다. 소스나 서명 키를 삭제하지 않고 출력 경로를 Xcode 로컬 DerivedData로 바꾼 뒤 성공했습니다. [Apple 서명 오류 안내](https://developer.apple.com/library/archive/qa/qa1940/_index.html).
+## 스토어 공개 전 차단 항목
 
-실제로 설치한 서명 산출물:
-`/Users/an-youwon/Library/Developer/Xcode/DerivedData/GoingGame-device/Build/Products/Debug-iphoneos/App.app`
+- 주 이용 연령 및 스토어 대상 연령 확정
+- 개인정보처리방침 검토 완료와 공개 HTTPS URL
+- Apple 배포용 Team·프로비저닝 및 App Store Connect 권한
+- Android 운영자 업로드 키·릴리스 AAB 및 Google Play 권한
+- 스토어 메타데이터, 개인정보 표시와 심사
+- 광고를 별도 릴리스에서 켤 경우 UMP/ATT, 운영 AdMob App ID·광고 단위와 실제 SDK 통신 재검증
 
-```sh
-# APPLE_TEAM_ID / IPHONE_UDID는 본인 Xcode 계정·기기에서 확인한 값 사용.
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination "id=$IPHONE_UDID" -derivedDataPath /Users/an-youwon/Library/Developer/Xcode/DerivedData/GoingGame-device -clonedSourcePackagesDirPath release-artifacts/ios-derived/SourcePackages -allowProvisioningUpdates -allowProvisioningDeviceRegistration DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGNING_ALLOWED=YES build
-codesign --verify --deep --strict /Users/an-youwon/Library/Developer/Xcode/DerivedData/GoingGame-device/Build/Products/Debug-iphoneos/App.app
-xcrun devicectl device install app --device "$IPHONE_UDID" /Users/an-youwon/Library/Developer/Xcode/DerivedData/GoingGame-device/Build/Products/Debug-iphoneos/App.app
-xcrun devicectl device process launch --device "$IPHONE_UDID" com.onewaycompany.twelveguardians
-```
-
-기존 `release-artifacts/ios-derived/Build/Products/Debug-iphoneos/App.app`는 실패한 서명 시도의 산출물로 배포에 사용하지 않습니다. 개발 인증서 개인키는 Keychain에 두고 저장소로 내보내지 않았습니다. 스토어 공개·유료 가입은 진행하지 않았습니다.
+유료 Apple 등록, 광고 활성화, TestFlight/App Store/Google Play 업로드와 제출은 시도하지 않았다.
