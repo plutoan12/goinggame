@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test stage-config.test.mjs engine.test.mjs rules.test.mjs level-generator.test.mjs rule-view.test.mjs game-state.test.mjs font-assets.test.mjs pixel-assets.test.mjs build-output.test.mjs branding.test.mjs motion.test.mjs drag.test.mjs progression.test.mjs tutorial.test.mjs saved-game.test.mjs save-writer.test.mjs session.test.mjs leaderboard.test.mjs native-adapter.test.mjs",
+    "test": "node --test stage-config.test.mjs engine.test.mjs rules.test.mjs level-generator.test.mjs rule-view.test.mjs game-state.test.mjs pick-controller.test.mjs font-assets.test.mjs pixel-assets.test.mjs build-output.test.mjs branding.test.mjs motion.test.mjs drag.test.mjs progression.test.mjs tutorial.test.mjs saved-game.test.mjs save-writer.test.mjs session.test.mjs leaderboard.test.mjs native-adapter.test.mjs",
     "postinstall": "node scripts/prepare-admob.mjs && node scripts/prepare-fonts.mjs",
     "prepare:fonts": "node scripts/prepare-fonts.mjs",
     "icons": "node scripts/icons.mjs",

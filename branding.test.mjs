@@ -72,13 +72,14 @@ test("web entry points bump their cache version with native reliability fixes", 
   const session = await read("session.js");
   const saved = await read("saved-game.js");
   assert.match(html, /style\.css\?v=mobile-5/);
-  assert.match(html, /game\.js\?v=mobile-6/);
+  assert.match(html, /game\.js\?v=mobile-7/);
   assert.doesNotMatch(html, /\?v=mobile-[1234]/);
   assert.match(game, /stage-config\.js\?v=stages-2/);
   assert.match(game, /engine\.js\?v=engine-2/);
   assert.match(game, /level-generator\.js\?v=generator-3/);
   assert.match(game, /session\.js\?v=limits-3/);
   assert.match(game, /saved-game\.js\?v=save-5/);
+  assert.match(game, /pick-controller\.js\?v=pick-1/);
   assert.match(game, /leaderboard\.js\?v=ranks-5/);
   assert.match(game, /leaderboard-view\.js\?v=ranks-5/);
   assert.match(view, /leaderboard\.js\?v=ranks-5/);

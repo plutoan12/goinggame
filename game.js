@@ -14,7 +14,6 @@ import {
 import { generateLevel } from "./level-generator.js?v=generator-3";
 import {
   canRuleTransfer,
-  applyRuleTransfer,
   legalRuleTransfers,
 } from "./rules.js";
 import { laneRuleView, ruleSummary } from "./rule-view.js";
@@ -23,6 +22,7 @@ import {
   restoreMoveSnapshot,
   startGeneratedLevel,
 } from "./game-state.js";
+import { pickLocation } from "./pick-controller.js?v=pick-1";
 import {
   flyTile,
   nudge,
@@ -565,120 +565,48 @@ function remember() {
   history.push(makeMoveSnapshot({ state, moves, holdingBoosted, ruleProgress }));
   if (history.length > 100) history.shift();
 }
-async function pick(location, origin) {
-  if (busy) return;
-  settleClock();
-  if (paused) {
-    tell("계속하기를 누르면 타이머와 게임이 다시 시작돼요.");
-    return;
-  }
-  lastMove = null;
-  if (["moves", "blocked", "time"].includes(gameOutcome())) {
-    showLoss();
-    return;
-  }
-  if (isWin(state)) {
-    showWin();
-    return;
-  }
-  if (sameLocation(selected, location)) {
-    selected = null;
-    render();
-    focusLocation(location);
-    tell("선택을 취소했어요. 다른 동물을 골라 주세요.");
-    return;
-  }
-  if (selected === null) {
-    if (locationLocked(location)) {
-      tell("봉인된 열은 해제 동물을 먼저 완성해야 사용할 수 있어요.", true);
-      return;
-    }
-    const color = topAt(state, location);
-    if (color === null) {
-      tell("먼저 옮길 동물이 있는 열이나 보관칸을 선택해 주세요.");
-      syncClock();
-      return;
-    }
-    selected = { ...location };
-    tone("select");
-    render();
-    focusLocation(location);
-    tell(
-      `${locationLabel(location)}의 ${petFor(color)[1]} 선택! 빈 보관칸이나 공간이 남은 열로 옮겨 주세요.`,
-    );
-    return;
-  }
-  const permission = canRuleTransfer(
-    state,
-    selected,
-    location,
-    rules,
-    ruleProgress,
-  );
-  if (!permission.allowed) {
-    nudge(locationElement(location)?.querySelector(".rail"));
-    tell(
-      permission.reason === "sealed"
-        ? "봉인된 열은 해제 동물을 먼저 완성해야 사용할 수 있어요."
-        : permission.reason === "marked-color"
-          ? "표식 열에는 표시된 동물만 넣을 수 있어요."
-          : permission.reason === "goal-first"
-            ? "수호 목표 동물을 먼저 완성해 주세요."
-            : location.kind === "holding" && state.holding[location.index] !== null
-              ? "그 보관칸은 사용 중이에요. 빈 보관칸을 골라 주세요."
-              : location.kind === "tube" && state.tubes[location.index].length >= state.capacity
-                ? "그 열은 가득 찼어요. 이동 가능한 칸을 골라 주세요."
-                : "맨 위 동물을 선택한 뒤 빈 보관칸이나 공간이 남은 열로 옮겨 주세요.",
-      true,
-    );
-    syncClock();
-    return;
-  }
-  const from = { ...selected };
-  const to = { ...location };
-  const applied = applyRuleTransfer(state, from, to, rules, ruleProgress);
-  if (!applied) return;
-  remember();
-  const source = locationElement(from)?.querySelector(".tile");
-  const targetRail = locationElement(to)?.querySelector(".rail");
-  const reveal = from.kind === "tube" &&
-    state.hidden[from.index][state.tubes[from.index].length - 2] === true;
-  state = applied.state;
-  ruleProgress = applied.progress;
-  moves++;
-  audit.push({ type: "move", from, to });
-  if (run.rule === "timed" && mode !== "practice") run.clockStarted = true;
-  selected = null;
-  const completed = applied.completedColor !== null;
-  lastMove = { from, to, reveal, completed };
-  setBusy(true);
-  tone("move");
-  save();
-  try {
-    await flyTile(source, targetRail, origin);
-  } finally {
-    setBusy(false);
-    render();
-  }
-  focusLocation(to);
-  if (isWin(state)) {
-    tone("win");
-    showWin();
-    return;
-  }
-  if (completed) tone("done");
-  else if (reveal) tone("reveal");
-  if (["moves", "blocked", "time"].includes(gameOutcome())) {
-    showLoss();
-    return;
-  }
-  tell(
-    completed
-      ? `${locationLabel(to)} 완성! ${petFor(topAt(state, to))[1]} 친구들을 모두 모았어요.`
-      : reveal
-        ? `${locationLabel(from)}에 숨어 있던 ${petFor(topAt(state, from))[1]} 등장!`
-        : `${locationLabel(from)} → ${locationLabel(to)}으로 이동했어요.`,
-  );
+const pickContext = {
+  get busy() { return busy; },
+  get paused() { return paused; },
+  get mode() { return mode; },
+  get selected() { return selected; },
+  set selected(value) { selected = value; },
+  get lastMove() { return lastMove; },
+  set lastMove(value) { lastMove = value; },
+  get state() { return state; },
+  set state(value) { state = value; },
+  get rules() { return rules; },
+  get ruleProgress() { return ruleProgress; },
+  set ruleProgress(value) { ruleProgress = value; },
+  get moves() { return moves; },
+  set moves(value) { moves = value; },
+  get audit() { return audit; },
+  get run() { return run; },
+  syncClock,
+  settleClock,
+  tell,
+  outcome: gameOutcome,
+  showLoss,
+  showWin,
+  render,
+  focusLocation,
+  locationLocked,
+  tone,
+  locationLabel,
+  petName: (color) => petFor(color)[1],
+  nudgeLocation: (location) =>
+    nudge(locationElement(location)?.querySelector(".rail")),
+  remember,
+  moveElements: (from, to) => ({
+    source: locationElement(from)?.querySelector(".tile"),
+    targetRail: locationElement(to)?.querySelector(".rail"),
+  }),
+  setBusy,
+  save,
+  flyTile,
+};
+function pick(location, origin) {
+  return pickLocation(pickContext, location, origin);
 }
 function start(
   nextMode = mode,

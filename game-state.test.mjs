@@ -67,12 +67,16 @@ test("generation failure preserves the current playable board", () => {
 
 test("tap, drag, deadlock and generated replay share the rule engine", async () => {
   const source = await readFile("game.js", "utf8");
-  assert.match(source, /from "\.\/rules\.js/);
+  const pickController = await readFile("pick-controller.js", "utf8");
+  assert.match(pickController, /from "\.\/rules\.js/);
   assert.match(
-    source,
-    /canRuleTransfer\(\s*state,\s*selected,\s*location,\s*rules,\s*ruleProgress,\s*\)/,
+    pickController,
+    /canRuleTransfer\(\s*context\.state,\s*context\.selected,\s*location,\s*context\.rules,\s*context\.ruleProgress,\s*\)/,
   );
-  assert.match(source, /applyRuleTransfer\(state, from, to, rules, ruleProgress\)/);
+  assert.match(
+    pickController,
+    /applyRuleTransfer\(\s*context\.state,\s*from,\s*to,\s*context\.rules,\s*context\.ruleProgress,\s*\)/,
+  );
   assert.match(source, /legalRuleTransfers\(state, rules, ruleProgress\)/);
   assert.match(
     source,

@@ -13,7 +13,7 @@
 
 `git diff --check && npm test && npm run build && npm run release:check`가 통과했다.
 
-- Node 테스트: 162/162 통과(봉인 저장, 중요 단계 지표, 타임어택 제스처의 최종 회귀 프로브 포함).
+- Node 테스트: 165/165 통과(봉인 저장, 중요 단계 지표, 타임어택 제스처와 탭 컨트롤러의 최종 회귀 프로브 포함).
 - 릴리스 정적 검사: 60단계, `twelve-puzzle-game-v4`, `twelve-puzzle-rankings-v4`, `twelve-puzzle-rules-v4`, 보관칸 마크업, 이전 아이템 문구 제거, 광고 비활성, 앱 ID·운영자·문의 정보 확인.
 - 생성기 스트레스: 고정 시드 1~20, 여정/연습 두 모드, 1~60단계의 총 2,400개 보드를 모두 생성하고 반환된 해답을 재생했다.
   - 여정: 1,200/1,200, 약 10.8초, 해답 13~190수(평균 84.2), 숨김 20.00~93.75%.
@@ -40,7 +40,7 @@ API 36 에뮬레이터를 기동한 뒤 `npm run native:doctor`가 다음 항목
 
 - APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 - 크기: 약 15MB
-- SHA-256: `1f40326ef5c007316b41f9f80a208dcfe0b3c69974bcedb8e24dad8dcd8fe8c5`
+- SHA-256: `5d7c6e736b039f3e95a65a65ec655c3d70c98a75b07e8f97fbb82a341454ee3d`
 - 패키지: `com.onewaycompany.twelveguardians`, 버전 1.0 (1), compile SDK 36
 - 표시 이름: `열두 퍼즐`
 - `apksigner verify`: v2 서명 통과

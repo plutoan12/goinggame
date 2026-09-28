@@ -40,12 +40,16 @@ test("unlocked seals and ordinary lanes remain explicitly labeled", () => {
 
 test("the controller consumes location rules and emits location targets", async () => {
   const game = await readFile("game.js", "utf8");
-  assert.match(game, /canRuleTransfer/);
-  assert.match(game, /applyRuleTransfer/);
+  const pickController = await readFile("pick-controller.js", "utf8");
+  assert.match(`${game}\n${pickController}`, /canRuleTransfer/);
+  assert.match(pickController, /applyRuleTransfer/);
   assert.match(game, /legalRuleTransfers/);
   assert.match(game, /data(?:set)?\.locationKind|data-location-kind/);
   assert.match(game, /data(?:set)?\.locationIndex|data-location-index/);
-  assert.doesNotMatch(game, /\b(?:canRuleMove|applyRuleMove|legalRuleMoves)\b/);
+  assert.doesNotMatch(
+    `${game}\n${pickController}`,
+    /\b(?:canRuleMove|applyRuleMove|legalRuleMoves)\b/,
+  );
 });
 
 test("holding tray is outside the board viewport but inside the drag surface", async () => {
