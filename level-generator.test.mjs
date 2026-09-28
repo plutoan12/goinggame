@@ -46,12 +46,26 @@ test("special stages receive compatible goal, marked and sealed rules", () => {
     assert.equal(validRuleProgress(level.progress, level.rules), true, `progress/${round}`);
     assert.equal(level.rules.goalColor !== null, config.ruleKinds.includes("goal"));
     assert.equal(level.rules.sealedLane !== null, config.ruleKinds.includes("sealed"));
-    const markedCount = config.ruleKinds.includes("marked") ? (round === 11 ? 2 : 1) : 0;
-    assert.equal(level.rules.marked.length, markedCount, `marks/${round}`);
+    assert.equal(level.rules.marked.length, config.markedCount, `marks/${round}`);
     if (level.rules.goalColor !== null && level.rules.unlockColor !== null) {
       assert.equal(level.rules.goalColor, level.rules.unlockColor);
     }
     assert.equal(isWin(replaySolution(level).state), true, `win/${round}`);
+  }
+});
+
+test("generated marked rules use configured counts for ordinary and boss stages", () => {
+  const cases = [
+    [26, 1], [29, 1], [30, 2],
+    [36, 1], [39, 1], [40, 2],
+    [46, 1], [49, 1], [50, 2],
+    [56, 1], [59, 1], [60, 2],
+  ];
+  for (const [round, expected] of cases) {
+    const config = levelConfig("blind", round);
+    const level = generateLevel("blind", 2400 + round, round);
+    assert.equal(config.markedCount, expected, `config/${round}`);
+    assert.equal(level.rules.marked.length, expected, `generated/${round}`);
   }
 });
 

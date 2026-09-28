@@ -45,17 +45,12 @@ function moveAnalysis(level) {
   return { finalState: state, incoming, firstTouch, completions };
 }
 
-function markedCount(config) {
-  if (!config.ruleKinds.includes("marked")) return 0;
-  return config.tier === 11 || config.tier === 12 ? 2 : 1;
-}
-
 function assignRules(level, config) {
   const analysis = moveAnalysis(level);
   if (!isWin(analysis.finalState)) return null;
   const needsGoal = config.ruleKinds.includes("goal");
   const needsSeal = config.ruleKinds.includes("sealed");
-  const marksNeeded = markedCount(config);
+  const marksNeeded = config.markedCount;
   const first = analysis.completions[0];
   if ((needsGoal || needsSeal) && !first) return null;
 
