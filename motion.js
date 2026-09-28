@@ -47,7 +47,7 @@ export async function flyTile(source, targetRail, origin) {
   source.style.visibility = "hidden";
   try {
     await ghost.animate(flightPath(start, end), {
-      duration: origin ? 140 : 340,
+      duration: origin ? 140 : 280,
       easing: "cubic-bezier(.25,.7,.35,1)",
       fill: "forwards",
     }).finished;
@@ -60,16 +60,23 @@ export async function flyTile(source, targetRail, origin) {
 }
 
 export function nudge(element) {
-  if (!element?.animate || reducedMotion()) return;
-  element.animate(
+  if (!element?.animate || reducedMotion()) {
+    element?.classList?.remove("invalid-target");
+    return;
+  }
+  element.classList?.add("invalid-target");
+  const animation = element.animate(
     [
       { transform: "translateX(0)" },
       { transform: "translateX(-4px)" },
       { transform: "translateX(4px)" },
       { transform: "translateX(0)" },
     ],
-    { duration: 210 },
+    { duration: 180, easing: "steps(2, end)" },
   );
+  const clearState = () => element.classList?.remove("invalid-target");
+  animation.finished?.then(clearState, clearState);
+  return animation;
 }
 
 export function celebrate(host) {
