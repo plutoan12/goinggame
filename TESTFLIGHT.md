@@ -7,7 +7,7 @@
 - 공개된 맨 위 동물을 잠시 두는 자유 보관칸과 한 판에 한 번 쓰는 `보관칸 +1`
 - 활성 게임 `twelve-puzzle-game-v4`, 로컬 순위 `twelve-puzzle-rankings-v4`, 순위 규칙 `twelve-puzzle-rules-v4`
 - 광고 `enabled=false`, 대상 연령 미정, 플레이어용 광고 UI 없음
-- 웹 자동 테스트 158/158과 두 모드 × 60단계 × 20시드, 총 2,400개 생성 보드 검증 완료
+- 웹 자동 테스트 162/162와 두 모드 × 60단계 × 20시드, 총 2,400개 생성 보드 검증 완료. 10단계마다 해답 길이·혼합도·초반 선택지·빈 열 사용·숨김 비율을 독립 재계산
 - iOS·Android 네이티브 동기화, iOS 기기용·Simulator용 미서명 Debug 빌드 완료
 - iPhone 18 Pro / iOS 27.0 Simulator에서 설치·실행하고 자유 보관칸 튜토리얼과 60단계 선택 UI 확인
 - Android Debug APK 빌드와 v2 서명·패키지 ID·앱 이름 확인 완료

@@ -1,5 +1,5 @@
 import { isWin, levelConfig, STAGES } from "./engine.js?v=engine-2";
-import { validCompletionAudit } from "./saved-game.js?v=save-4";
+import { validCompletionAudit } from "./saved-game.js?v=save-5";
 
 export const RANK_VERSION = "twelve-puzzle-rules-v4";
 export const RANK_KEY = "twelve-puzzle-rankings-v4";

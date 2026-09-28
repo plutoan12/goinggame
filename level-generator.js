@@ -9,15 +9,24 @@ import {
 } from "./engine.js?v=engine-2";
 import { applyRuleMove, initialRuleProgress } from "./rules.js";
 import { levelConfig } from "./stage-config.js?v=stages-2";
+import {
+  MILESTONE_GATES,
+  hiddenRatio,
+  milestoneContractIssues,
+  milestoneMetricIssues,
+  milestoneMetrics,
+} from "./milestone-metrics.js";
+
+export {
+  MILESTONE_GATES,
+  hiddenRatio,
+  milestoneContractIssues,
+  milestoneMetricIssues,
+  milestoneMetrics,
+};
 
 export const CANDIDATES_PER_SEED = 40;
 export const SEED_RETRIES = 16;
-
-export function hiddenRatio(state) {
-  const hidden = state.hidden?.flat().filter(Boolean).length ?? 0;
-  const tiles = state.tubes.flat().length;
-  return tiles === 0 ? 0 : hidden / tiles;
-}
 
 export class LevelGenerationError extends Error {
   constructor(mode, round, requestedSeed) {
@@ -125,7 +134,9 @@ export function generateLevel(mode = "blind", requestedSeed = 1, round = 1) {
       if (config.hidden && hiddenRatio(level.state) < config.minHiddenRatio) continue;
       const solution = compactSolution(level);
       if (solution.length > config.maxSolutionSteps) continue;
-      return { ...level, solution, seed: resolvedSeed };
+      const resolved = { ...level, solution, seed: resolvedSeed };
+      if (milestoneContractIssues(resolved, config).length) continue;
+      return resolved;
     }
   }
   throw new LevelGenerationError(mode, config.tier, requestedSeed);

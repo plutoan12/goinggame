@@ -198,7 +198,7 @@ test("timed undo back to zero moves remains resumable", () => {
   assert.equal(validSavedGame(saved), true);
 });
 
-test("current ad-disabled saves reject reward state and hidden sealed lanes", () => {
+test("current ad-disabled saves reject reward state", () => {
   const ordinary = stageSave("blind", 1);
   assert.equal(validSavedGame({
     ...ordinary,
@@ -209,21 +209,23 @@ test("current ad-disabled saves reject reward state and hidden sealed lanes", ()
     run: { ...ordinary.run, revived: true, limit: ordinary.run.limit + 30 },
   }), false);
 
-  const sealed = stageSave("blind", 13);
-  const hidden = structuredClone(sealed);
-  const lane = hidden.rules.sealedLane;
-  hidden.state.hidden[lane][0] = true;
-  assert.equal(validState(hidden.state, levelConfig("blind", 13), 0), true);
-  assert.equal(validSavedGame(hidden), false);
-  hidden.state.hidden[lane][0] = false;
-  hidden.history = [{
-    state: structuredClone(hidden.state),
-    moves: 1,
-    holdingBoosted: false,
-    ruleProgress: structuredClone(hidden.ruleProgress),
-  }];
-  hidden.history[0].state.hidden[lane][0] = true;
-  assert.equal(validSavedGame(hidden), false);
+});
+
+test("fresh sealed stages resume with covered tiles while hidden-state tampering is rejected", () => {
+  for (const round of [13, 47, 60]) {
+    const saved = stageSave("blind", round, 20260928 + round);
+    const lane = saved.rules.sealedLane;
+    assert.notEqual(lane, null, `sealed lane/${round}`);
+    assert.equal(saved.state.hidden[lane].some(Boolean), true, `covered tiles/${round}`);
+    assert.equal(validSavedGame(saved), true, `fresh save/${round}`);
+
+    const corrupted = structuredClone(saved);
+    const hiddenIndex = corrupted.state.hidden[lane].findIndex(Boolean);
+    assert.ok(hiddenIndex >= 0, `hidden index/${round}`);
+    corrupted.state.hidden[lane][hiddenIndex] = false;
+    assert.equal(validState(corrupted.state, levelConfig("blind", round)), true);
+    assert.equal(validSavedGame(corrupted), false, `tampered hidden flag/${round}`);
+  }
 });
 
 test("a restored win requires every move from the generated starting board", () => {

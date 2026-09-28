@@ -12,6 +12,7 @@ import {
   hiddenRatio,
   replaySolution,
 } from "./level-generator.js";
+import * as generator from "./level-generator.js";
 import { createRun } from "./session.js";
 
 const manualHiddenRatio = (state) => {
@@ -165,5 +166,32 @@ test("rule-aware compact solutions determine the move budget", () => {
     const run = createRun(level, "moves", round);
     assert.equal(run.limit, Math.max(24, Math.ceil(solution.length * 1.25) + 8));
     assert.ok(solution.length <= run.limit);
+  }
+});
+
+test("milestone gates measure every approved difficulty factor with calibrated headroom", () => {
+  assert.equal(typeof generator.milestoneMetrics, "function");
+  assert.equal(typeof generator.milestoneMetricIssues, "function");
+  assert.deepEqual(generator.MILESTONE_GATES, {
+    10: { minSolutionSteps: 24, minMixingScore: 16, minInitialLegalMoves: 8, minEarlyLegalMoves: 7, minBlankTubeMoves: 6 },
+    20: { minSolutionSteps: 45, minMixingScore: 24, minInitialLegalMoves: 10, minEarlyLegalMoves: 10, minBlankTubeMoves: 8 },
+    30: { minSolutionSteps: 62, minMixingScore: 32, minInitialLegalMoves: 5, minEarlyLegalMoves: 5, minBlankTubeMoves: 10 },
+    40: { minSolutionSteps: 68, minMixingScore: 34, minInitialLegalMoves: 16, minEarlyLegalMoves: 15, minBlankTubeMoves: 12 },
+    50: { minSolutionSteps: 78, minMixingScore: 35, minInitialLegalMoves: 13, minEarlyLegalMoves: 13, minBlankTubeMoves: 14 },
+    60: { minSolutionSteps: 58, minMixingScore: 30, minInitialLegalMoves: 2, minEarlyLegalMoves: 2, minBlankTubeMoves: 16 },
+  });
+  if (typeof generator.milestoneMetrics !== "function") return;
+
+  for (const round of [10, 20, 30, 40, 50, 60]) {
+    for (let seed = 1; seed <= 10; seed++) {
+      const config = levelConfig("blind", round);
+      const level = generateLevel("blind", seed, round);
+      const metrics = generator.milestoneMetrics(level);
+      assert.deepEqual(
+        generator.milestoneMetricIssues(metrics, config),
+        [],
+        `${round}/${seed}: ${JSON.stringify(metrics)}`,
+      );
+    }
   }
 });

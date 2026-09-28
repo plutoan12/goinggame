@@ -11,7 +11,7 @@ import {
   stageColumns,
   stageGroups,
 } from "./stage-config.js?v=stages-2";
-import { generateLevel } from "./level-generator.js?v=generator-2";
+import { generateLevel } from "./level-generator.js?v=generator-3";
 import {
   canRuleTransfer,
   applyRuleTransfer,
@@ -33,7 +33,7 @@ import { attachTileDrag } from "./drag.js";
 import { createProgression } from "./progression.js";
 import { createTutorial } from "./tutorial.js";
 import { createTutorialView } from "./tutorial-view.js";
-import { SAVE_KEY, createSaveWriter, validSavedGame } from "./saved-game.js?v=save-4";
+import { SAVE_KEY, createSaveWriter, validSavedGame } from "./saved-game.js?v=save-5";
 import {
   GUARDIANS as PETS,
   SPECIAL_SPRITES,
@@ -45,11 +45,11 @@ import {
   outcome,
   consumeItem,
   revealLane,
-  elapse,
   formatTime,
   canReturnToItemsAfterLoss,
   addHoldingSlot,
-} from "./session.js?v=limits-2";
+  accountRunClock,
+} from "./session.js?v=limits-3";
 import {
   createLeaderboard,
   makeRecord,
@@ -258,12 +258,15 @@ function tell(text, error = false) {
   $("message").classList.toggle("error", error);
 }
 function settleClock() {
-  if (clockStamp !== null) run = elapse(run, performance.now() - clockStamp);
-  clockStamp = null;
+  ({ run, clockStamp } = accountRunClock(
+    run,
+    clockStamp,
+    performance.now(),
+    false,
+  ));
 }
 function syncClock() {
-  settleClock();
-  if (
+  const active =
     run.rule === "timed" &&
     mode !== "practice" &&
     run.clockStarted &&
@@ -271,9 +274,14 @@ function syncClock() {
     !busy &&
     !document.hidden &&
     !$("dialog").open &&
-    gameOutcome() === "playing"
-  )
-    clockStamp = performance.now();
+    gameOutcome() === "playing";
+  ({ run, clockStamp } = accountRunClock(
+    run,
+    clockStamp,
+    performance.now(),
+    active,
+  ));
+  if (gameOutcome() !== "playing") clockStamp = null;
   updateLimitDisplay();
 }
 function updateLimitDisplay() {
@@ -1095,7 +1103,7 @@ document
 document.querySelector(".dialog-pet").replaceChildren(petArt(2));
 boardDrag = attachTileDrag($("playSurface"), $("boardViewport"), {
   canStart(from) {
-    settleClock();
+    syncClock();
     return !busy && !paused && !$("dialog").open &&
       gameOutcome() === "playing" &&
       topAt(state, from) !== null &&

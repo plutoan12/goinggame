@@ -3,10 +3,10 @@ import {
   legalTransfers,
   cloneState,
 } from "./engine.js?v=engine-2";
-import { compactSolution } from "./level-generator.js?v=generator-2";
+import { compactSolution } from "./level-generator.js?v=generator-3";
 import { levelConfig } from "./stage-config.js?v=stages-2";
 
-export { compactSolution } from "./level-generator.js?v=generator-2";
+export { compactSolution } from "./level-generator.js?v=generator-3";
 
 export function timerFields(rule = "moves", stage = 1) {
   const timeLimitMs = levelConfig("blind", stage).timeLimitMs;
@@ -65,6 +65,16 @@ export function elapse(run, milliseconds) {
   )
     return run;
   return { ...run, remainingMs: Math.max(0, run.remainingMs - milliseconds) };
+}
+export function accountRunClock(run, clockStamp, now, keepArmed = false) {
+  const nextRun = clockStamp === null
+    ? run
+    : elapse(run, now - clockStamp);
+  const armed = keepArmed &&
+    nextRun.rule === "timed" &&
+    nextRun.clockStarted &&
+    nextRun.remainingMs > 0;
+  return { run: nextRun, clockStamp: armed ? now : null };
 }
 export function formatTime(milliseconds) {
   const seconds = Math.ceil(Math.max(0, milliseconds) / 1000);

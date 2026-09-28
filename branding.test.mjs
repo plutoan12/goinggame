@@ -7,6 +7,7 @@ import {
   inspectHiddenContract,
   operatorDocumentIssues,
 } from "./scripts/release-check.mjs";
+import * as releaseCheck from "./scripts/release-check.mjs";
 
 const read = (path) => readFile(path, "utf8");
 
@@ -71,17 +72,17 @@ test("web entry points bump their cache version with native reliability fixes", 
   const session = await read("session.js");
   const saved = await read("saved-game.js");
   assert.match(html, /style\.css\?v=mobile-5/);
-  assert.match(html, /game\.js\?v=mobile-5/);
+  assert.match(html, /game\.js\?v=mobile-6/);
   assert.doesNotMatch(html, /\?v=mobile-[1234]/);
   assert.match(game, /stage-config\.js\?v=stages-2/);
   assert.match(game, /engine\.js\?v=engine-2/);
-  assert.match(game, /level-generator\.js\?v=generator-2/);
-  assert.match(game, /session\.js\?v=limits-2/);
-  assert.match(game, /saved-game\.js\?v=save-4/);
+  assert.match(game, /level-generator\.js\?v=generator-3/);
+  assert.match(game, /session\.js\?v=limits-3/);
+  assert.match(game, /saved-game\.js\?v=save-5/);
   assert.match(game, /leaderboard\.js\?v=ranks-5/);
   assert.match(game, /leaderboard-view\.js\?v=ranks-5/);
   assert.match(view, /leaderboard\.js\?v=ranks-5/);
-  assert.match(leaderboard, /saved-game\.js\?v=save-4/);
+  assert.match(leaderboard, /saved-game\.js\?v=save-5/);
   for (const source of [engine, generator, session, saved]) {
     assert.match(source, /stage-config\.js\?v=stages-2/);
   }
@@ -159,6 +160,43 @@ test("release validation enforces hidden-depth patterns and their upper bound", 
   const topSaturating = structuredClone(valid);
   topSaturating.hidden[0] = [true, true, true, false];
   assert.ok(inspectHiddenContract(topSaturating, { hidden: true, hiddenDepth: 4, capacity: 4 }).issues.length);
+});
+
+test("release milestone contract rejects every fabricated difficulty metric", () => {
+  assert.equal(typeof releaseCheck.milestoneReleaseContractIssues, "function");
+  if (typeof releaseCheck.milestoneReleaseContractIssues !== "function") return;
+  const stage = {
+    tier: 10,
+    hidden: true,
+    minHiddenRatio: 0.10,
+    maxSolutionSteps: 80,
+  };
+  const valid = {
+    solutionSteps: 24,
+    mixingScore: 16,
+    initialLegalMoves: 8,
+    earlyLegalMoveFloor: 7,
+    blankTubeMoves: 6,
+    hiddenRatio: 0.10,
+  };
+  assert.deepEqual(releaseCheck.milestoneReleaseContractIssues(valid, stage), []);
+  for (const [field, value] of [
+    ["solutionSteps", 23],
+    ["mixingScore", 15],
+    ["initialLegalMoves", 1],
+    ["earlyLegalMoveFloor", 1],
+    ["blankTubeMoves", 5],
+    ["hiddenRatio", 0.09],
+  ]) {
+    assert.ok(
+      releaseCheck.milestoneReleaseContractIssues({ ...valid, [field]: value }, stage).length,
+      field,
+    );
+  }
+  assert.ok(
+    releaseCheck.milestoneReleaseContractIssues({ ...valid, solutionSteps: 81 }, stage).length,
+    "maximum solution length",
+  );
 });
 
 test("release document validation rejects contradictions in an individual document", () => {

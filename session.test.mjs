@@ -128,6 +128,29 @@ test("timed run starts only on first move, elapsed time clamps, moves are unlimi
   assert.ok(validRun(JSON.parse(JSON.stringify(run))));
   assert.equal(grantReward(run, "revive", 0), null);
 });
+test("repeated active gesture eligibility checks preserve every timed interval", () => {
+  assert.equal(typeof session.accountRunClock, "function");
+  if (typeof session.accountRunClock !== "function") return;
+
+  let run = createRun(generateLevel("blind", 5, 1), "timed", 1);
+  run.clockStarted = true;
+  let clockStamp = 1_000;
+  ({ run, clockStamp } = session.accountRunClock(run, clockStamp, 1_125, true));
+  assert.equal(run.remainingMs, 119_875);
+  assert.equal(clockStamp, 1_125);
+  ({ run, clockStamp } = session.accountRunClock(run, clockStamp, 1_400, true));
+  assert.equal(run.remainingMs, 119_600);
+  assert.equal(clockStamp, 1_400);
+  ({ run, clockStamp } = session.accountRunClock(run, clockStamp, 1_900, true));
+  assert.equal(run.remainingMs, 119_100);
+  assert.equal(clockStamp, 1_900);
+
+  const neverStarted = createRun(generateLevel("blind", 5, 1), "timed", 1);
+  const invalidGesture = session.accountRunClock(neverStarted, null, 2_000, true);
+  assert.equal(invalidGesture.run.remainingMs, neverStarted.remainingMs);
+  assert.equal(invalidGesture.run.clockStarted, false);
+  assert.equal(invalidGesture.clockStamp, null);
+});
 test("timer stage durations and validation", () => {
   const level = generateLevel("blind", 6, 1);
   for (const [index, seconds] of [

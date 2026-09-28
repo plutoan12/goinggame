@@ -7,6 +7,8 @@ import {
   compactSolution,
   generateLevel,
   hiddenRatio,
+  milestoneMetricIssues,
+  milestoneMetrics,
   replaySolution,
 } from "../level-generator.js";
 import { validRuleProgress, validRules } from "../rules.js";
@@ -74,6 +76,10 @@ export function inspectHiddenContract(state, stage) {
     issues.push(`숨김 비율 상한 초과: ratio=${ratio} upper=${upperBound}`);
   }
   return { issues, hiddenTiles, totalTiles, ratio, upperBound };
+}
+
+export function milestoneReleaseContractIssues(metrics, stage) {
+  return milestoneMetricIssues(metrics, stage);
 }
 
 export function operatorDocumentIssues(file, text) {
@@ -171,6 +177,7 @@ function stressGenerator() {
     let fallbackSeeds = 0;
     let maxRetryOffset = 0;
     let slowest = { durationMs: 0, round: 0, seed: 0 };
+    const milestoneSamples = new Map();
     for (let round = 1; round <= 60; round++) {
       for (let seed = 1; seed <= 20; seed++) {
         const caseStarted = performance.now();
@@ -205,6 +212,15 @@ function stressGenerator() {
         if (mode === "blind" ? ratio < stage.minHiddenRatio : ratio !== 0) blockers.push(`생성 보드 숨김 비율 위반: ${mode}/${round}/${seed}`);
         const compact = compactSolution(level);
         if (compact.length !== level.solution.length || compact.length > stage.maxSolutionSteps) blockers.push(`생성 보드 압축 해답 길이 위반: ${mode}/${round}/${seed}`);
+        if (round % 10 === 0) {
+          const metrics = milestoneMetrics(level);
+          for (const issue of milestoneReleaseContractIssues(metrics, stage)) {
+            blockers.push(`중요 단계 난이도 계약 위반: ${mode}/${round}/${seed} (${issue})`);
+          }
+          const samples = milestoneSamples.get(round) ?? [];
+          samples.push(metrics);
+          milestoneSamples.set(round, samples);
+        }
         try {
           if (!isWin(replaySolution(level).state)) blockers.push(`생성 보드 해답이 승리 상태가 아님: ${mode}/${round}/${seed}`);
         } catch (error) {
@@ -234,6 +250,10 @@ function stressGenerator() {
       fallbackSeeds,
       maxRetryOffset,
       slowest,
+      milestones: [...milestoneSamples].map(([round, samples]) => ({
+        round,
+        samples,
+      })),
     });
   }
   return summaries;
@@ -250,6 +270,18 @@ for (const summary of stress) {
     `fallback ${summary.fallbackSeeds} (max +${summary.maxRetryOffset}), ` +
     `slowest stage ${summary.slowest.round}/seed ${summary.slowest.seed} ${summary.slowest.durationMs.toFixed(1)}ms`,
   );
+  for (const { round, samples } of summary.milestones) {
+    const range = (field, digits = 0) => {
+      const values = samples.map((metrics) => metrics[field]);
+      return `${Math.min(...values).toFixed(digits)}-${Math.max(...values).toFixed(digits)}`;
+    };
+    console.log(
+      `MILESTONE ${summary.mode}/${round}: steps ${range("solutionSteps")}, ` +
+      `mix ${range("mixingScore")}, initial ${range("initialLegalMoves")}, ` +
+      `early-floor ${range("earlyLegalMoveFloor")}, blank-use ${range("blankTubeMoves")}, ` +
+      `hidden ${range("hiddenRatio", 4)}`,
+    );
+  }
 }
 for (const blocker of blockers) console.log(`BLOCKED ${blocker}`);
 for (const blocker of storeBlockers) console.log(`STORE-BLOCKED ${blocker}`);

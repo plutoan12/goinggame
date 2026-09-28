@@ -1,12 +1,12 @@
 import { applyRuleTransfer, validRules, validRuleProgress } from "./rules.js";
 import { cloneState, isWin, revealCompleted } from "./engine.js?v=engine-2";
-import { generateLevel } from "./level-generator.js?v=generator-2";
+import { generateLevel } from "./level-generator.js?v=generator-3";
 import {
   addHoldingSlot,
   createRun,
   revealLane,
   validRun,
-} from "./session.js?v=limits-2";
+} from "./session.js?v=limits-3";
 import { levelConfig, STAGES } from "./stage-config.js?v=stages-2";
 import { releaseConfig } from "./release-config.js";
 
@@ -123,11 +123,6 @@ function sameState(left, right) {
     ) &&
     left.holding.length === right.holding.length &&
     left.holding.every((color, index) => color === right.holding[index]);
-}
-
-function sealedLaneVisible(state, rules) {
-  return rules.sealedLane === null ||
-    state.hidden[rules.sealedLane]?.every((hidden) => !hidden) === true;
 }
 
 function validLocationShape(location) {
@@ -346,7 +341,6 @@ export function validSavedGame(saved) {
       saved.run.limit > Math.max(baseRun.limit, saved.moves) + 30
     )) ||
     (saved.mode === "practice" && !allVisible(saved.state)) ||
-    !sealedLaneVisible(saved.state, saved.rules) ||
     (saved.moves === 0 && (
       isWin(saved.state) ||
       saved.ruleProgress.goalAchieved !== initial.progress.goalAchieved ||
