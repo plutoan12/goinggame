@@ -13,7 +13,7 @@
 
 `git diff --check && npm test && npm run build && npm run release:check`가 통과했다.
 
-- Node 테스트: 155/155 통과.
+- Node 테스트: 158/158 통과(수정 라운드의 릴리스 실패 프로브 3개 포함).
 - 릴리스 정적 검사: 60단계, `twelve-puzzle-game-v4`, `twelve-puzzle-rankings-v4`, `twelve-puzzle-rules-v4`, 보관칸 마크업, 이전 아이템 문구 제거, 광고 비활성, 앱 ID·운영자·문의 정보 확인.
 - 생성기 스트레스: 고정 시드 1~20, 여정/연습 두 모드, 1~60단계의 총 2,400개 보드를 모두 생성하고 반환된 해답을 재생했다.
   - 여정: 1,200/1,200, 약 7.6초, 해답 13~203수(평균 84.8), 숨김 20.00~93.30%.
@@ -63,7 +63,7 @@ iPhone 18 Pro / iOS 27.0 Simulator에 시뮬레이터 앱을 설치하고 `com.o
 - 기존 Apple Development 인증서와 해당 Bundle ID·기기용 프로비저닝 프로파일 일치 확인
 - 프로파일 만료: 2026-10-03 17:22:26 KST
 - 자동 프로비저닝 갱신 옵션 없이 서명된 Debug 빌드 성공
-- 서명 앱: `/Users/an-youwon/Library/Developer/Xcode/DerivedData/GoingGame-task7-device/Build/Products/Debug-iphoneos/App.app`
+- 서명 앱: `$HOME/Library/Developer/Xcode/DerivedData/GoingGame-task7-device/Build/Products/Debug-iphoneos/App.app`
 - `codesign --verify --deep --strict` 통과
 - 앱 데이터를 삭제하지 않고 설치 성공, Bundle ID로 실행 성공, 기기 프로세스 경로 확인
 
