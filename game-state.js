@@ -1,10 +1,10 @@
 import { cloneState } from "./engine.js";
 
-export function makeMoveSnapshot({ state, moves, extra, ruleProgress }) {
+export function makeMoveSnapshot({ state, moves, holdingBoosted, ruleProgress }) {
   return {
     state: cloneState(state),
     moves,
-    extra,
+    holdingBoosted,
     ruleProgress: { ...ruleProgress },
   };
 }

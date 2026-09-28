@@ -18,7 +18,37 @@ export const MODES = Object.freeze({
 export function cloneState(s) {
   const next = { capacity: s.capacity, tubes: s.tubes.map((t) => t.slice()) };
   if (s.hidden) next.hidden = s.hidden.map((h) => h.slice());
+  if (s.holding) next.holding = s.holding.slice();
   return next;
+}
+export function tube(index) {
+  return { kind: "tube", index };
+}
+export function holding(index) {
+  return { kind: "holding", index };
+}
+function validLocation(s, location) {
+  if (
+    !location ||
+    typeof location !== "object" ||
+    Array.isArray(location) ||
+    Object.keys(location).length !== 2 ||
+    !Object.hasOwn(location, "kind") ||
+    !Object.hasOwn(location, "index") ||
+    !Number.isInteger(location.index) ||
+    location.index < 0
+  ) return false;
+  if (location.kind === "tube") return location.index < s.tubes.length;
+  if (location.kind === "holding") {
+    return Array.isArray(s.holding) && location.index < s.holding.length;
+  }
+  return false;
+}
+export function topAt(s, location) {
+  if (!validLocation(s, location)) return null;
+  return location.kind === "tube"
+    ? topColor(s.tubes[location.index])
+    : s.holding[location.index];
 }
 export function topColor(tube) {
   return tube.length === 0 ? null : tube[tube.length - 1];
@@ -53,6 +83,46 @@ export function applyMove(s, from, to) {
   }
   return next;
 }
+export function canTransfer(s, from, to) {
+  if (!validLocation(s, from) || !validLocation(s, to)) return false;
+  if (from.kind === to.kind && from.index === to.index) return false;
+  if (from.kind === "holding" && to.kind === "holding") return false;
+  const value = topAt(s, from);
+  if (value === null) return false;
+  if (from.kind === "tube") {
+    const source = s.tubes[from.index];
+    if (s.hidden?.[from.index]?.[source.length - 1]) return false;
+  }
+  if (to.kind === "holding") return s.holding[to.index] === null;
+  const destination = s.tubes[to.index];
+  if (destination.length >= s.capacity) return false;
+  if (s.hidden?.[to.index]?.[destination.length - 1]) return false;
+  return true;
+}
+export function applyTransfer(s, from, to) {
+  if (!canTransfer(s, from, to)) return s;
+  const next = cloneState(s);
+  let value;
+  if (from.kind === "tube") {
+    const source = next.tubes[from.index];
+    value = source.pop();
+    if (next.hidden) {
+      const sourceHidden = next.hidden[from.index];
+      sourceHidden.length = source.length;
+      if (source.length > 0) sourceHidden[source.length - 1] = false;
+    }
+  } else {
+    value = next.holding[from.index];
+    next.holding[from.index] = null;
+  }
+  if (to.kind === "tube") {
+    next.tubes[to.index].push(value);
+    if (next.hidden) next.hidden[to.index].push(false);
+  } else {
+    next.holding[to.index] = value;
+  }
+  return next;
+}
 export function legalMoves(s) {
   const moves = [];
   for (let from = 0; from < s.tubes.length; from++) {
@@ -63,9 +133,23 @@ export function legalMoves(s) {
   }
   return moves;
 }
+export function legalTransfers(s) {
+  const locations = [
+    ...s.tubes.map((_, index) => tube(index)),
+    ...(s.holding ?? []).map((_, index) => holding(index)),
+  ];
+  const moves = [];
+  for (const from of locations) {
+    for (const to of locations) {
+      if (canTransfer(s, from, to)) moves.push({ from, to, count: 1 });
+    }
+  }
+  return moves;
+}
 export function isWin(s) {
   return (
     s.tubes.some((t) => t.length) &&
+    (s.holding?.every((entry) => entry === null) ?? true) &&
     s.tubes.every(
       (t, i) => isTubeDone(t, s.capacity) && !s.hidden?.[i]?.some(Boolean),
     )

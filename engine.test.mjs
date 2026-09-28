@@ -2,17 +2,23 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { GUARDIANS } from "./guardians.js";
 import {
+  applyTransfer,
   applyMove,
   canPour,
+  canTransfer,
   cloneState,
   generateLevel,
+  holding,
   isWin,
+  legalTransfers,
   legalMoves,
   MODES,
   STAGES,
   levelConfig,
   mixingScore,
   revealCompleted,
+  topAt,
+  tube,
 } from "./engine.js";
 
 const sample = () => ({
@@ -79,6 +85,68 @@ test("one tile moves, newly exposed tile flips, input and undo snapshot unchange
   n.tubes[0].push(2);
   assert.deepEqual(s, snapshot);
 });
+test("location transfers support tube and holding pairs without mutating input", () => {
+  const state = { ...sample(), holding: [null, null] };
+  const original = structuredClone(state);
+
+  assert.deepEqual(tube(1), { kind: "tube", index: 1 });
+  assert.deepEqual(holding(0), { kind: "holding", index: 0 });
+  assert.equal(topAt(state, tube(0)), 0);
+  assert.equal(topAt(state, holding(0)), null);
+  assert.equal(canTransfer(state, tube(0), tube(1)), true);
+  assert.equal(canTransfer(state, tube(0), holding(0)), true);
+
+  const stored = applyTransfer(state, tube(0), holding(0));
+  assert.equal(stored.holding[0], 0);
+  assert.equal(stored.hidden[0].at(-1), false);
+  assert.deepEqual(state, original);
+
+  const returned = applyTransfer(stored, holding(0), tube(2));
+  assert.equal(returned.holding[0], null);
+  assert.deepEqual(returned.tubes[2], [0]);
+  assert.deepEqual(returned.hidden[2], [false]);
+});
+test("location transfers reject invalid pairs, occupied holding, hidden sources and bad locations", () => {
+  const state = { ...sample(), holding: [2, null] };
+  const malformed = [
+    null,
+    0,
+    { kind: "tube", index: -1 },
+    { kind: "tube", index: 1.5 },
+    { kind: "tube", index: 99 },
+    { kind: "holding", index: 99 },
+    { kind: "other", index: 0 },
+    { kind: "tube", index: 0, extra: true },
+  ];
+  assert.equal(canTransfer(state, holding(0), holding(1)), false);
+  assert.equal(canTransfer(state, tube(0), holding(0)), false);
+  for (const location of malformed) {
+    assert.equal(canTransfer(state, location, tube(2)), false);
+    assert.equal(canTransfer(state, tube(0), location), false);
+    assert.equal(topAt(state, location), null);
+  }
+  const hiddenSource = structuredClone(state);
+  hiddenSource.hidden[0][1] = true;
+  assert.equal(canTransfer(hiddenSource, tube(0), holding(1)), false);
+  assert.equal(applyTransfer(hiddenSource, tube(0), holding(1)), hiddenSource);
+});
+test("legal transfers include both holding directions and occupied holding prevents a win", () => {
+  const state = {
+    capacity: 2,
+    tubes: [[0, 0], [], []],
+    hidden: [[false, false], [], []],
+    holding: [1, null],
+  };
+  const transfers = legalTransfers(state);
+  assert.ok(transfers.some(({ from, to, count }) =>
+    count === 1 && from.kind === "tube" && from.index === 0 &&
+    to.kind === "holding" && to.index === 1));
+  assert.ok(transfers.some(({ from, to, count }) =>
+    count === 1 && from.kind === "holding" && from.index === 0 &&
+    to.kind === "tube" && to.index === 1));
+  assert.equal(isWin(state), false);
+  assert.equal(isWin({ ...state, holding: [null, null] }), true);
+});
 test("three matching pets remain; completion needs a full column and no hidden tiles", () => {
   const s = {
     capacity: 4,
@@ -121,14 +189,17 @@ test("stage catalog boards in both modes solve via their witness", () => {
         assert.ok(isWin(s), `${mode} ${seed} must finish`);
       }
 });
-test("difficulty grows in both dimensions, hidden depth and species, then caps", () => {
-  let prev = { colors: 0, capacity: 0, hiddenDepth: -1 };
+test("generated geometry follows the approved sixty-stage wave and milestones", () => {
+  const milestones = new Map([
+    [30, { colors: 14, capacity: 10, blanks: 2, holdingSlots: 2 }],
+    [40, { colors: 14, capacity: 12, blanks: 2, holdingSlots: 1 }],
+    [50, { colors: 14, capacity: 14, blanks: 2, holdingSlots: 1 }],
+    [60, { colors: 14, capacity: 16, blanks: 1, holdingSlots: 0 }],
+  ]);
   for (let round = 1; round <= STAGES.length; round++) {
     const cfg = levelConfig("blind", round);
     assert.ok(cfg.petIds.includes(12) && cfg.petIds.includes(13));
     assert.equal(new Set(cfg.petIds).size, cfg.colors);
-    assert.ok(cfg.colors >= prev.colors && cfg.capacity >= prev.capacity);
-    assert.ok(cfg.hiddenDepth >= prev.hiddenDepth);
     const { state } = generateLevel("blind", 26491, round);
     assert.ok(mixingScore(state) >= cfg.colors * 2);
     assert.equal(state.tubes.length, cfg.colors + cfg.blanks);
@@ -137,9 +208,21 @@ test("difficulty grows in both dimensions, hidden depth and species, then caps",
     if (round === 1) assert.ok(state.hidden.flat().some(Boolean));
     const practice = generateLevel("practice", 26491, round).state;
     assert.ok(practice.hidden.flat().every((h) => !h));
-    prev = cfg;
+    if (milestones.has(round)) {
+      const { colors, capacity, blanks, holdingSlots } = cfg;
+      assert.deepEqual(
+        { colors, capacity, blanks, holdingSlots },
+        milestones.get(round),
+      );
+    }
   }
-  assert.deepEqual(levelConfig("blind", 999), levelConfig("blind", 20));
+  for (const round of [4, 8, 14, 18, 24, 28, 34, 38, 44, 48, 54, 58]) {
+    const previous = levelConfig("blind", round - 1);
+    const relief = levelConfig("blind", round);
+    assert.ok(relief.capacity <= previous.capacity, `capacity/${round}`);
+    assert.equal(relief.blanks, 3, `blanks/${round}`);
+  }
+  assert.deepEqual(levelConfig("blind", 999), levelConfig("blind", 60));
   assert.equal(levelConfig("blind", NaN).tier, 1);
 });
 test("extra lane supports moves and can be undone via snapshot", () => {
@@ -152,9 +235,17 @@ test("extra lane supports moves and can be undone via snapshot", () => {
   assert.equal(applyMove(next, 0, 3).tubes[3].length, 1);
   assert.deepEqual(saved, before);
 });
-test("early boards stay short while later boards grow vertically", () => {
-  for (const [index, total] of [16, 20, 30, 35, 48].entries()) {
-    const level = generateLevel("blind", 26491, index + 1);
+test("chapter bosses grow to the unique sixteen-by-fourteen final board", () => {
+  const milestones = [
+    [10, 48],
+    [20, 88],
+    [30, 140],
+    [40, 168],
+    [50, 196],
+    [60, 224],
+  ];
+  for (const [round, total] of milestones) {
+    const level = generateLevel("blind", 26491, round);
     assert.equal(level.state.tubes.flat().length, total);
     let state = level.state;
     for (const move of level.solution) state = revealCompleted(applyMove(state, move.from, move.to));

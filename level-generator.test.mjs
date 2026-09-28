@@ -9,6 +9,7 @@ import {
   SEED_RETRIES,
   compactSolution,
   generateLevel,
+  hiddenRatio,
   replaySolution,
 } from "./level-generator.js";
 import { createRun } from "./session.js";
@@ -84,11 +85,27 @@ test("sealed lanes reveal every starting tile before they unlock", () => {
   }
 });
 
-test("2000 boards solve through the same rule engine used by players", () => {
+test("all stage seeds start with configured holding and pass generation filters", () => {
   for (const mode of ["blind", "practice"])
-    for (let round = 1; round <= 20; round++)
-      for (let seed = 1; seed <= 50; seed++) {
+    for (let round = 1; round <= 60; round++)
+      for (let seed = 1; seed <= 5; seed++) {
+        const config = levelConfig(mode, round);
         const level = generateLevel(mode, seed, round);
+        assert.deepEqual(
+          level.state.holding,
+          Array(config.holdingSlots).fill(null),
+          `holding/${mode}/${round}/${seed}`,
+        );
+        if (mode === "blind") {
+          assert.ok(
+            hiddenRatio(level.state) >= config.minHiddenRatio,
+            `hidden/${mode}/${round}/${seed}`,
+          );
+        }
+        assert.ok(
+          compactSolution(level).length <= config.maxSolutionSteps,
+          `steps/${mode}/${round}/${seed}`,
+        );
         let state = level.state;
         let progress = level.progress;
         for (const move of level.solution) {
@@ -102,7 +119,7 @@ test("2000 boards solve through the same rule engine used by players", () => {
 });
 
 test("rule-aware compact solutions determine the move budget", () => {
-  for (let round = 1; round <= 20; round++) {
+  for (let round = 1; round <= 60; round++) {
     const level = generateLevel("blind", 1700 + round, round);
     const solution = compactSolution(level);
     const run = createRun(level, "moves", round);

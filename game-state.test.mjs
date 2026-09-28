@@ -17,19 +17,25 @@ const current = Object.freeze({
 
 test("move snapshots clone and restore rule progress with the board", () => {
   const input = {
-    state: { capacity: 2, tubes: [[0], []], hidden: [[false], []] },
+    state: { capacity: 2, tubes: [[0], []], hidden: [[false], []], holding: [1, null] },
     moves: 9,
-    extra: false,
+    holdingBoosted: true,
     ruleProgress: { goalAchieved: true, sealOpened: false },
   };
   const snapshot = makeMoveSnapshot(input);
   input.state.tubes[0].pop();
+  input.state.holding[0] = null;
   input.ruleProgress.sealOpened = true;
   const restored = restoreMoveSnapshot(snapshot);
   assert.deepEqual(restored.state.tubes, [[0], []]);
+  assert.deepEqual(restored.state.holding, [1, null]);
+  assert.equal(restored.holdingBoosted, true);
+  assert.equal(Object.hasOwn(restored, "extra"), false);
   assert.deepEqual(restored.ruleProgress, { goalAchieved: true, sealOpened: false });
   restored.state.tubes[0].pop();
+  restored.state.holding[0] = null;
   assert.deepEqual(snapshot.state.tubes, [[0], []]);
+  assert.deepEqual(snapshot.state.holding, [1, null]);
 });
 
 test("generation success keeps the resolved seed and fresh rule state", () => {

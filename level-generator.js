@@ -13,6 +13,17 @@ import { levelConfig } from "./stage-config.js?v=stages-2";
 export const CANDIDATES_PER_SEED = 40;
 export const SEED_RETRIES = 16;
 
+export function hiddenRatio(state) {
+  let hidden = 0;
+  let tiles = 0;
+  state.hidden?.forEach((flags, lane) => {
+    if (!flags.some(Boolean)) return;
+    hidden += flags.filter(Boolean).length;
+    tiles += state.tubes[lane].length;
+  });
+  return tiles === 0 ? 0 : hidden / tiles;
+}
+
 export class LevelGenerationError extends Error {
   constructor(mode, round, requestedSeed) {
     super(`검증된 ${round}단계 보드를 만들지 못했습니다.`);
@@ -115,8 +126,12 @@ export function generateLevel(mode = "blind", requestedSeed = 1, round = 1) {
     const resolvedSeed = (firstSeed + retry) >>> 0;
     for (let candidate = 0; candidate < CANDIDATES_PER_SEED; candidate++) {
       const base = generateBaseLevel(mode, candidateSeed(resolvedSeed, candidate), config.tier);
+      base.state.holding = Array(config.holdingSlots).fill(null);
       const level = assignRules(base, config);
-      if (level) return { ...level, seed: resolvedSeed };
+      if (!level) continue;
+      if (config.hidden && hiddenRatio(level.state) < config.minHiddenRatio) continue;
+      if (compactSolution(level).length > config.maxSolutionSteps) continue;
+      return { ...level, seed: resolvedSeed };
     }
   }
   throw new LevelGenerationError(mode, config.tier, requestedSeed);
