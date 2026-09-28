@@ -1,8 +1,11 @@
 import {
-  applyMove,
-  canPour,
+  applyTransfer,
+  canTransfer,
+  holding,
+  legalTransfers,
   revealCompleted,
-  topColor,
+  topAt,
+  tube,
 } from "./engine.js";
 
 export function initialRuleProgress(rules) {
@@ -13,19 +16,25 @@ export function initialRuleProgress(rules) {
 }
 
 function completionColor(state, from, to) {
-  const color = topColor(state.tubes[from]);
-  const destination = state.tubes[to];
+  if (to.kind !== "tube") return null;
+  const color = topAt(state, from);
+  const destination = state.tubes[to.index];
   if (color === null || destination.length + 1 !== state.capacity) return null;
   return destination.every((entry) => entry === color) ? color : null;
 }
 
-export function canRuleMove(state, from, to, rules, progress) {
-  if (!canPour(state, from, to)) return { allowed: false, reason: "base" };
-  if (!progress.sealOpened && (from === rules.sealedLane || to === rules.sealedLane)) {
+export function canRuleTransfer(state, from, to, rules, progress) {
+  if (!canTransfer(state, from, to)) return { allowed: false, reason: "base" };
+  if (!progress.sealOpened && (
+    (from.kind === "tube" && from.index === rules.sealedLane) ||
+    (to.kind === "tube" && to.index === rules.sealedLane)
+  )) {
     return { allowed: false, reason: "sealed" };
   }
-  const mark = rules.marked.find((entry) => entry.lane === to);
-  if (mark && topColor(state.tubes[from]) !== mark.color) {
+  const mark = to.kind === "tube"
+    ? rules.marked.find((entry) => entry.lane === to.index)
+    : null;
+  if (mark && topAt(state, from) !== mark.color) {
     return { allowed: false, reason: "marked-color" };
   }
   const completedColor = completionColor(state, from, to);
@@ -35,10 +44,10 @@ export function canRuleMove(state, from, to, rules, progress) {
   return { allowed: true, reason: null };
 }
 
-export function applyRuleMove(state, from, to, rules, progress) {
-  if (!canRuleMove(state, from, to, rules, progress).allowed) return null;
+export function applyRuleTransfer(state, from, to, rules, progress) {
+  if (!canRuleTransfer(state, from, to, rules, progress).allowed) return null;
   const completedColor = completionColor(state, from, to);
-  const nextState = applyMove(state, from, to);
+  const nextState = applyTransfer(state, from, to);
   if (nextState.hidden) revealCompleted(nextState);
   const nextProgress = { ...progress };
   if (completedColor !== null && completedColor === rules.goalColor) {
@@ -50,16 +59,23 @@ export function applyRuleMove(state, from, to, rules, progress) {
   return { state: nextState, progress: nextProgress, completedColor };
 }
 
+export function legalRuleTransfers(state, rules, progress) {
+  return legalTransfers(state).filter(({ from, to }) =>
+    canRuleTransfer(state, from, to, rules, progress).allowed);
+}
+
+export function canRuleMove(state, from, to, rules, progress) {
+  return canRuleTransfer(state, tube(from), tube(to), rules, progress);
+}
+
+export function applyRuleMove(state, from, to, rules, progress) {
+  return applyRuleTransfer(state, tube(from), tube(to), rules, progress);
+}
+
 export function legalRuleMoves(state, rules, progress) {
-  const moves = [];
-  for (let from = 0; from < state.tubes.length; from++) {
-    for (let to = 0; to < state.tubes.length; to++) {
-      if (canRuleMove(state, from, to, rules, progress).allowed) {
-        moves.push({ from, to, count: 1 });
-      }
-    }
-  }
-  return moves;
+  return legalRuleTransfers(state, rules, progress)
+    .filter(({ from, to }) => from.kind === "tube" && to.kind === "tube")
+    .map(({ from, to, count }) => ({ from: from.index, to: to.index, count }));
 }
 
 export function validRules(rules, config) {

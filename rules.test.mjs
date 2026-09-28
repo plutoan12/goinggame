@@ -1,18 +1,102 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyRuleTransfer,
   applyRuleMove,
+  canRuleTransfer,
   canRuleMove,
   initialRuleProgress,
+  legalRuleTransfers,
   legalRuleMoves,
   validRuleProgress,
   validRules,
 } from "./rules.js";
+import { holding, tube } from "./engine.js";
 
-const state = (tubes, capacity = 2) => ({
+const state = (tubes, capacity = 2, held = []) => ({
   capacity,
   tubes: tubes.map((tube) => [...tube]),
   hidden: tubes.map((tube) => tube.map(() => false)),
+  holding: [...held],
+});
+
+test("sealed tubes cannot send to or receive from holding", () => {
+  const rules = { goalColor: null, marked: [], sealedLane: 0, unlockColor: 0 };
+  const progress = initialRuleProgress(rules);
+  const board = state([[0], []], 2, [1, null]);
+
+  assert.deepEqual(
+    canRuleTransfer(board, tube(0), holding(1), rules, progress),
+    { allowed: false, reason: "sealed" },
+  );
+  assert.deepEqual(
+    canRuleTransfer(board, holding(0), tube(0), rules, progress),
+    { allowed: false, reason: "sealed" },
+  );
+  assert.deepEqual(
+    canRuleTransfer(board, holding(0), tube(1), rules, progress),
+    { allowed: true, reason: null },
+  );
+  assert.equal(
+    legalRuleTransfers(board, rules, progress).some(({ from, to }) =>
+      from.kind === "holding" && from.index === 0 &&
+      to.kind === "tube" && to.index === 0),
+    false,
+  );
+});
+
+test("marked tubes reject the wrong held pet", () => {
+  const rules = {
+    goalColor: null,
+    marked: [{ lane: 1, color: 0 }],
+    sealedLane: null,
+    unlockColor: null,
+  };
+  const progress = initialRuleProgress(rules);
+  const board = state([[], []], 2, [1]);
+
+  assert.deepEqual(
+    canRuleTransfer(board, holding(0), tube(1), rules, progress),
+    { allowed: false, reason: "marked-color" },
+  );
+  const leavingForHolding = state([[1], []], 2, [null, null]);
+  assert.deepEqual(
+    canRuleTransfer(leavingForHolding, tube(0), holding(1), rules, progress),
+    { allowed: true, reason: null },
+  );
+});
+
+test("a held goal pet can complete its tube and open the seal", () => {
+  const rules = { goalColor: 0, marked: [], sealedLane: 2, unlockColor: 0 };
+  const progress = initialRuleProgress(rules);
+  const board = state([[0], [1, 1], []], 2, [0]);
+
+  const completed = applyRuleTransfer(
+    board,
+    holding(0),
+    tube(0),
+    rules,
+    progress,
+  );
+  assert.deepEqual(completed.progress, { goalAchieved: true, sealOpened: true });
+  assert.equal(completed.completedColor, 0);
+  assert.deepEqual(completed.state.tubes[0], [0, 0]);
+  assert.deepEqual(completed.state.holding, [null]);
+});
+
+test("a held non-goal pet cannot complete before the goal", () => {
+  const rules = { goalColor: 0, marked: [], sealedLane: null, unlockColor: null };
+  const progress = initialRuleProgress(rules);
+  const board = state([[1], [0]], 2, [1]);
+
+  assert.deepEqual(
+    canRuleTransfer(board, holding(0), tube(0), rules, progress),
+    { allowed: false, reason: "goal-first" },
+  );
+  assert.equal(
+    applyRuleTransfer(board, holding(0), tube(0), rules, progress),
+    null,
+  );
 });
 
 test("ordinary mixed-color moves use the base movement rules", () => {

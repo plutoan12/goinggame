@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isWin } from "./engine.js";
-import { applyRuleMove, validRuleProgress, validRules } from "./rules.js";
+import { isWin, tube } from "./engine.js";
+import { applyRuleTransfer, validRuleProgress, validRules } from "./rules.js";
 import { levelConfig } from "./stage-config.js";
 import {
   CANDIDATES_PER_SEED,
@@ -143,7 +143,13 @@ test("all stage seeds start with configured holding and pass generation filters"
         let state = level.state;
         let progress = level.progress;
         for (const move of level.solution) {
-          const applied = applyRuleMove(state, move.from, move.to, level.rules, progress);
+          const applied = applyRuleTransfer(
+            state,
+            tube(move.from),
+            tube(move.to),
+            level.rules,
+            progress,
+          );
           assert.ok(applied, `${mode}/${round}/${seed}: ${move.from}->${move.to}`);
           state = applied.state;
           progress = applied.progress;

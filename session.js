@@ -1,6 +1,6 @@
 import {
   isWin,
-  legalMoves,
+  legalTransfers,
   cloneState,
 } from "./engine.js?v=engine-2";
 import { compactSolution } from "./level-generator.js?v=generator-2";
@@ -48,7 +48,7 @@ export function validRun(run) {
     typeof run.rewards.peek === "boolean"
   );
 }
-export function outcome(state, moves, run, mode, availableMoves = legalMoves) {
+export function outcome(state, moves, run, mode, availableMoves = legalTransfers) {
   if (isWin(state)) return "won"; // Last permitted move can still win.
   if (mode === "practice") return "playing";
   if (run.rule === "timed" && run.remainingMs <= 0) return "time";
@@ -72,12 +72,28 @@ export function formatTime(milliseconds) {
 }
 export function canReturnToItemsAfterLoss(
   result,
-  { historyLength = 0, undo = 0, extra = true } = {},
+  {
+    historyLength = 0,
+    undo = 0,
+    holdingBoosted = true,
+    state = null,
+    availableMoves = legalTransfers,
+  } = {},
 ) {
   const canUndo = historyLength > 0 && undo > 0;
   if (result === "moves") return canUndo;
-  if (result === "blocked") return canUndo || !extra;
+  if (result === "blocked") {
+    const canAddHolding = !holdingBoosted && state !== null &&
+      availableMoves(addHoldingSlot(state)).length > 0;
+    return canUndo || canAddHolding;
+  }
   return false;
+}
+export function addHoldingSlot(state) {
+  const next = cloneState(state);
+  if (!next.holding) next.holding = [];
+  next.holding.push(null);
+  return next;
 }
 export function consumeItem(run, item, mode) {
   if (!["undo", "peek"].includes(item)) return null;
