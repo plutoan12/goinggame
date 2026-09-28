@@ -1,8 +1,8 @@
-import { isWin, levelConfig } from "./engine.js?v=engine-2";
+import { isWin, levelConfig, STAGES } from "./engine.js?v=engine-2";
 import { validCompletionAudit } from "./saved-game.js?v=save-4";
 
-export const RANK_VERSION = "twelve-puzzle-rules-v3";
-export const RANK_KEY = "twelve-puzzle-rankings-v3";
+export const RANK_VERSION = "twelve-puzzle-rules-v4";
+export const RANK_KEY = "twelve-puzzle-rankings-v4";
 const MAX_RECORDS = 200;
 
 export function cleanName(value) {
@@ -24,7 +24,7 @@ export function makeRecord({
   round,
   state,
   moves,
-  extra,
+  holdingBoosted,
   run,
   rules,
   ruleProgress,
@@ -38,15 +38,24 @@ export function makeRecord({
     moves <= 0 ||
     !Number.isInteger(round) ||
     round < 1 ||
-    round > 20 ||
+    round > STAGES.length ||
     !validCompletionAudit({
-      mode, round, seed, state, moves, extra, run, rules, ruleProgress, audit,
+      mode,
+      round,
+      seed,
+      state,
+      moves,
+      holdingBoosted,
+      run,
+      rules,
+      ruleProgress,
+      audit,
     })
   ) return null;
   const used =
     Math.max(0, 3 + (run.rewards.undo ? 3 : 0) - run.undo) +
     Math.max(0, 2 + (run.rewards.peek ? 2 : 0) - run.peek) +
-    Number(extra) +
+    Number(holdingBoosted) +
     Number(run.revived);
   const record = {
     id,
@@ -81,7 +90,7 @@ export function validRecord(r) {
     r.rulesVersion === RANK_VERSION &&
     Number.isInteger(r.stage) &&
     r.stage >= 1 &&
-    r.stage <= 20 &&
+    r.stage <= STAGES.length &&
     Number.isInteger(r.seed) &&
     r.seed >= 0 &&
     r.seed <= 0xffffffff &&

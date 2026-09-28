@@ -9,42 +9,25 @@ import {
   validState,
 } from "./saved-game.js";
 import { levelConfig } from "./stage-config.js";
-import { applyRuleMove } from "./rules.js";
+import { holding, tube } from "./engine.js";
+import { applyRuleMove, applyRuleTransfer } from "./rules.js";
 
-function stage20Save({ extra = false } = {}) {
-  const level = generateLevel("blind", 20260926, 20);
-  const state = structuredClone(level.state);
-  if (extra) {
-    state.tubes.push([]);
-    state.hidden.push([]);
-  }
-  return {
-    version: 2,
-    mode: "blind",
-    round: 20,
-    seed: level.seed,
-    state,
-    moves: 0,
-    extra,
-    attemptId: "stage-20-attempt",
-    rules: level.rules,
-    ruleProgress: structuredClone(level.progress),
-    run: createRun(level, "moves", 20),
-    audit: extra ? [{ type: "extra" }] : [],
-    history: [],
-  };
-}
+const auditMove = ({ from, to }) => ({
+  type: "move",
+  from: tube(from),
+  to: tube(to),
+});
 
 function stageSave(mode, round, seed = 20260928, moves = 0) {
   const level = generateLevel(mode, seed, round);
   return {
-    version: 2,
+    version: 3,
     mode,
     round,
     seed: level.seed,
     state: structuredClone(level.state),
     moves,
-    extra: false,
+    holdingBoosted: false,
     attemptId: `stage-${round}-attempt`,
     rules: structuredClone(level.rules),
     ruleProgress: structuredClone(level.progress),
@@ -54,71 +37,106 @@ function stageSave(mode, round, seed = 20260928, moves = 0) {
   };
 }
 
-test("only the fresh twenty-stage rule snapshot is accepted", () => {
-  const saved = stage20Save();
-  assert.equal(SAVE_KEY, "twelve-puzzle-game-v3");
+test("only the current sixty-stage save payload is accepted", () => {
+  const saved = stageSave("blind", 21);
+  assert.equal(SAVE_KEY, "twelve-puzzle-game-v4");
   assert.equal(validSavedGame(saved), true);
-  assert.equal(validSavedGame({ ...saved, version: 0 }), false);
-  assert.equal(validSavedGame({ ...saved, round: 21 }), false);
+  assert.equal(validSavedGame({ ...saved, version: 2 }), false);
+  assert.equal(validSavedGame({ ...saved, round: 61 }), false);
   assert.equal(validSavedGame({ ...saved, seed: -1 }), false);
   assert.equal(validSavedGame({ ...saved, ruleProgress: { goalAchieved: "yes", sealOpened: false } }), false);
   assert.equal(validSavedGame({ ...saved, rules: { ...saved.rules, sealedLane: 99 } }), false);
   assert.equal(validSavedGame({ ...saved, rules: { ...saved.rules, goalColor: 99 } }), false);
   assert.equal(validSavedGame({
     ...saved,
-    rules: { goalColor: null, marked: [], sealedLane: null, unlockColor: null },
-    ruleProgress: { goalAchieved: true, sealOpened: true },
+    rules: {
+      goalColor: null,
+      marked: [{ lane: 0, color: 0 }],
+      sealedLane: null,
+      unlockColor: null,
+    },
   }), false);
   assert.equal(validSavedGame({ ...saved, history: [{ state: saved.state }] }), false);
   assert.equal(validSavedGame({ mode: "blind", round: 5, state: saved.state }), false);
 });
 
-test("stage twenty validates an extra lane and its move snapshot", () => {
-  const before = stage20Save();
-  const after = stage20Save({ extra: true });
-  const level = generateLevel("blind", after.seed, 20);
-  const move = compactSolution(level)[0];
+test("a pet in holding and its location move snapshot are valid", () => {
+  const before = stageSave("blind", 1);
+  const after = structuredClone(before);
+  const from = tube(after.state.tubes.findIndex((tubeState) => tubeState.length));
+  const to = holding(0);
   const snapshot = {
     state: structuredClone(after.state),
     moves: 0,
-    extra: true,
+    holdingBoosted: false,
     ruleProgress: structuredClone(after.ruleProgress),
   };
-  const applied = applyRuleMove(
-    after.state, move.from, move.to, after.rules, after.ruleProgress,
+  const applied = applyRuleTransfer(
+    after.state, from, to, after.rules, after.ruleProgress,
   );
   assert.ok(applied);
   after.state = applied.state;
   after.ruleProgress = applied.progress;
   after.moves = 1;
-  after.audit.push({ type: "move", ...move });
-  after.history = [{
-    ...snapshot,
-  }];
-  assert.equal(before.state.tubes.length, 15);
-  assert.equal(after.state.tubes.length, 16);
+  after.audit.push({ type: "move", from, to });
+  after.history = [snapshot];
   assert.equal(validSavedGame(after), true);
   assert.deepEqual(after.history[0].ruleProgress, before.ruleProgress);
-  assert.equal(after.history[0].state.tubes.length, 16);
-  assert.equal(validState(after.state, levelConfig("blind", 20), 1), true);
-  assert.equal(validSavedGame({ ...after, state: before.state }), false);
+  assert.equal(after.state.holding[0] !== null, true);
+  assert.equal(validState(after.state, levelConfig("blind", 1)), true);
+
+  const wrongFinalHolding = structuredClone(after);
+  wrongFinalHolding.state.holding[1] = wrongFinalHolding.state.holding[0];
+  wrongFinalHolding.state.holding[0] = null;
+  assert.equal(validState(wrongFinalHolding.state, levelConfig("blind", 1)), true);
+  assert.equal(validSavedGame(wrongFinalHolding), false);
 });
 
-test("board validation rejects malformed colors, hidden flags and lane counts", () => {
-  const saved = stage20Save();
+test("board validation rejects malformed tubes, holding length and occupied count", () => {
+  const saved = stageSave("blind", 1);
   const config = levelConfig(saved.mode, saved.round);
-  assert.equal(validState(saved.state, config, 0), true);
+  assert.equal(validState(saved.state, config), true);
   const wrongColor = structuredClone(saved.state);
   wrongColor.tubes[0][0] = 99;
-  assert.equal(validState(wrongColor, config, 0), false);
+  assert.equal(validState(wrongColor, config), false);
   const hiddenTop = structuredClone(saved.state);
   const lane = hiddenTop.tubes.findIndex((tube) => tube.length);
   hiddenTop.hidden[lane][hiddenTop.hidden[lane].length - 1] = true;
-  assert.equal(validState(hiddenTop, config, 0), false);
+  assert.equal(validState(hiddenTop, config), false);
   const missingLane = structuredClone(saved.state);
   missingLane.tubes.pop();
   missingLane.hidden.pop();
-  assert.equal(validState(missingLane, config, 0), false);
+  assert.equal(validState(missingLane, config), false);
+  const wrongHoldingLength = structuredClone(saved.state);
+  wrongHoldingLength.holding.pop();
+  assert.equal(validState(wrongHoldingLength, config), false);
+  const extraPet = structuredClone(saved.state);
+  extraPet.holding[0] = 0;
+  assert.equal(validState(extraPet, config), false);
+});
+
+test("audit rejects invalid locations, holding-to-holding and a second holding item", () => {
+  const saved = stageSave("blind", 1);
+  assert.equal(validSavedGame({
+    ...saved,
+    audit: [{ type: "move", from: { kind: "tray", index: 0 }, to: tube(0) }],
+  }), false);
+  assert.equal(validSavedGame({
+    ...saved,
+    audit: [{ type: "move", from: tube(-1), to: tube(0) }],
+  }), false);
+  assert.equal(validSavedGame({
+    ...saved,
+    audit: [{ type: "move", from: holding(0), to: holding(1) }],
+  }), false);
+
+  const boosted = structuredClone(saved);
+  boosted.state.holding.push(null);
+  boosted.holdingBoosted = true;
+  boosted.audit = [{ type: "holding-plus" }];
+  assert.equal(validSavedGame(boosted), true);
+  boosted.audit.push({ type: "holding-plus" });
+  assert.equal(validSavedGame(boosted), false);
 });
 
 test("save validation rejects stage-inconsistent run, rules and progress", () => {
@@ -157,7 +175,7 @@ test("save validation rejects hidden practice tiles and zero-move wins", () => {
   const hiddenPractice = structuredClone(practice);
   const lane = hiddenPractice.state.tubes.findIndex((tube) => tube.length > 1);
   hiddenPractice.state.hidden[lane][0] = true;
-  assert.equal(validState(hiddenPractice.state, levelConfig("practice", 5), 0), true);
+  assert.equal(validState(hiddenPractice.state, levelConfig("practice", 5)), true);
   assert.equal(validSavedGame(hiddenPractice), false);
 
   const zeroMoveWin = stageSave("blind", 1, 20260928, 0);
@@ -176,7 +194,7 @@ test("timed undo back to zero moves remains resumable", () => {
   saved.run.clockStarted = true;
   saved.run.remainingMs -= 1200;
   saved.run.undo = 2;
-  saved.audit = [{ type: "move", ...move }, { type: "undo" }];
+  saved.audit = [auditMove(move), { type: "undo" }];
   assert.equal(validSavedGame(saved), true);
 });
 
@@ -201,7 +219,7 @@ test("current ad-disabled saves reject reward state and hidden sealed lanes", ()
   hidden.history = [{
     state: structuredClone(hidden.state),
     moves: 1,
-    extra: false,
+    holdingBoosted: false,
     ruleProgress: structuredClone(hidden.ruleProgress),
   }];
   hidden.history[0].state.hidden[lane][0] = true;
@@ -218,7 +236,7 @@ test("a restored win requires every move from the generated starting board", () 
     history.push({
       state: structuredClone(state),
       moves: index,
-      extra: false,
+      holdingBoosted: false,
       ruleProgress: structuredClone(progress),
     });
     const applied = applyRuleMove(state, move.from, move.to, level.rules, progress);
@@ -230,7 +248,7 @@ test("a restored win requires every move from the generated starting board", () 
     state,
     ruleProgress: progress,
     history,
-    audit: solution.map(({ from, to }) => ({ type: "move", from, to })),
+    audit: solution.map(auditMove),
   };
   assert.equal(validSavedGame(saved), true);
   assert.equal(validSavedGame({ ...saved, history: [] }), false);
@@ -253,10 +271,10 @@ test("a fabricated one-move completion cannot start from an invented board", () 
     history: [{
       state: previous,
       moves: 0,
-      extra: false,
+      holdingBoosted: false,
       ruleProgress: structuredClone(finished.progress),
     }],
-    audit: [{ type: "move", from: to, to: from }],
+    audit: [{ type: "move", from: tube(to), to: tube(from) }],
   };
   assert.equal(validSavedGame(saved), false);
 });
@@ -290,7 +308,7 @@ test("a legal replay that moves after the move limit is rejected", () => {
       assert.ok(applied);
       state = applied.state;
       progress = applied.progress;
-      audit.push({ type: "move", from, to });
+      audit.push(auditMove({ from, to }));
     }
   }
   for (const { from, to } of solution) {
@@ -298,7 +316,7 @@ test("a legal replay that moves after the move limit is rejected", () => {
     assert.ok(applied);
     state = applied.state;
     progress = applied.progress;
-    audit.push({ type: "move", from, to });
+    audit.push(auditMove({ from, to }));
   }
   const saved = {
     ...stageSave("blind", 1, level.seed, audit.length),
@@ -328,7 +346,7 @@ test("completion audit replays a spent undo and a revealed lane", () => {
     history.push({
       state: structuredClone(state),
       moves: index,
-      extra: false,
+      holdingBoosted: false,
       ruleProgress: structuredClone(progress),
     });
     let applied = applyRuleMove(state, from, to, level.rules, progress);
@@ -336,7 +354,7 @@ test("completion audit replays a spent undo and a revealed lane", () => {
     const before = { state: structuredClone(state), progress: structuredClone(progress) };
     state = applied.state;
     progress = applied.progress;
-    audit.push({ type: "move", from, to });
+    audit.push(auditMove({ from, to }));
     if (index === 0) {
       state = before.state;
       progress = before.progress;
@@ -345,14 +363,14 @@ test("completion audit replays a spent undo and a revealed lane", () => {
       history.push({
         state: structuredClone(state),
         moves: index,
-        extra: false,
+        holdingBoosted: false,
         ruleProgress: structuredClone(progress),
       });
       applied = applyRuleMove(state, from, to, level.rules, progress);
       assert.ok(applied);
       state = applied.state;
       progress = applied.progress;
-      audit.push({ type: "move", from, to });
+      audit.push(auditMove({ from, to }));
     }
   }
 
@@ -381,14 +399,14 @@ test("save history must match the snapshots derived from the audit", () => {
     history.push({
       state: structuredClone(state),
       moves: index,
-      extra: false,
+      holdingBoosted: false,
       ruleProgress: structuredClone(progress),
     });
     const applied = applyRuleMove(state, move.from, move.to, level.rules, progress);
     assert.ok(applied);
     state = applied.state;
     progress = applied.progress;
-    audit.push({ type: "move", ...move });
+    audit.push(auditMove(move));
   }
   const saved = {
     ...stageSave("blind", 5, level.seed, 3),

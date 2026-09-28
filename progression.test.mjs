@@ -29,6 +29,15 @@ test("progression never reads or mutates previous game keys", () => {
   assert.deepEqual(calls.map(([, key]) => key), [PROGRESS_KEY, PROGRESS_KEY]);
   assert.equal(calls.some(([, key]) => key.startsWith("twelve-guardians-")), false);
 });
+test("version 1 progress cleared through stage 20 unlocks stage 21", () => {
+  const storage = memory();
+  storage.setItem(PROGRESS_KEY, JSON.stringify({ version: 1, cleared: 20 }));
+  const p = createProgression(storage);
+  assert.equal(p.cleared, 20);
+  assert.equal(p.unlocked, 21);
+  assert.equal(p.canAccess(21), true);
+  assert.equal(p.canAccess(22), false);
+});
 test("wins unlock all sixty stages one at a time, preserve replays and survive reopening", () => {
   const storage = memory();
   let p = createProgression(storage);

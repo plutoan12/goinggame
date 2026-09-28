@@ -1,11 +1,16 @@
-import { applyRuleMove, validRules, validRuleProgress } from "./rules.js";
+import { applyRuleTransfer, validRules, validRuleProgress } from "./rules.js";
 import { cloneState, isWin, revealCompleted } from "./engine.js?v=engine-2";
 import { generateLevel } from "./level-generator.js?v=generator-2";
-import { createRun, revealLane, validRun } from "./session.js?v=limits-2";
+import {
+  addHoldingSlot,
+  createRun,
+  revealLane,
+  validRun,
+} from "./session.js?v=limits-2";
 import { levelConfig, STAGES } from "./stage-config.js?v=stages-2";
 import { releaseConfig } from "./release-config.js";
 
-export const SAVE_KEY = "twelve-puzzle-game-v3";
+export const SAVE_KEY = "twelve-puzzle-game-v4";
 
 export function createSaveWriter(storage, key, onFailure = () => {}) {
   let storageError = false;
@@ -32,18 +37,27 @@ export function createSaveWriter(storage, key, onFailure = () => {}) {
   };
 }
 
-export function validState(state, config, addedLanes = 0) {
+export function validState(state, config, addedLanes = 0, addedHoldingSlots = 0) {
   if (
     !state ||
     state.capacity !== config.capacity ||
     !Number.isInteger(addedLanes) ||
     addedLanes < 0 ||
+    !Number.isInteger(addedHoldingSlots) ||
+    addedHoldingSlots < 0 ||
     !Array.isArray(state.tubes) ||
     state.tubes.length !== config.colors + config.blanks + addedLanes ||
     !Array.isArray(state.hidden) ||
-    state.hidden.length !== state.tubes.length
+    state.hidden.length !== state.tubes.length ||
+    !Array.isArray(state.holding) ||
+    state.holding.length !== config.holdingSlots + addedHoldingSlots
   ) return false;
   const counts = Array(config.colors).fill(0);
+  const countPet = (color) =>
+    Number.isInteger(color) &&
+    color >= 0 &&
+    color < config.colors &&
+    ++counts[color];
   const validLanes = state.tubes.every((tube, lane) =>
     Array.isArray(tube) &&
     tube.length <= config.capacity &&
@@ -51,14 +65,13 @@ export function validState(state, config, addedLanes = 0) {
     state.hidden[lane].length === tube.length &&
     state.hidden[lane].every((hidden) => typeof hidden === "boolean") &&
     !state.hidden[lane].at(-1) &&
-    tube.every((color) =>
-      Number.isInteger(color) &&
-      color >= 0 &&
-      color < config.colors &&
-      ++counts[color]
-    )
+    tube.every(countPet)
   );
-  return validLanes && counts.every((count) => count === config.capacity);
+  const validHolding = state.holding.every((color) =>
+    color === null || countPet(color)
+  );
+  return validLanes && validHolding &&
+    counts.every((count) => count === config.capacity);
 }
 
 function validAttemptId(id) {
@@ -68,18 +81,20 @@ function validAttemptId(id) {
 function validSnapshot(snapshot, config, rules, revived) {
   return !!snapshot &&
     Number.isSafeInteger(snapshot.moves) && snapshot.moves >= 0 &&
-    typeof snapshot.extra === "boolean" &&
+    typeof snapshot.holdingBoosted === "boolean" &&
     validRuleProgress(snapshot.ruleProgress, rules) &&
-    validState(snapshot.state, config, Number(snapshot.extra) + Number(revived));
+    validState(
+      snapshot.state,
+      config,
+      Number(revived),
+      Number(snapshot.holdingBoosted),
+    );
 }
 
 function matchesStageRules(rules, config) {
   const has = (kind) => config.ruleKinds.includes(kind);
-  const expectedMarks = has("marked")
-    ? (config.tier === 11 || config.tier === 12 ? 2 : 1)
-    : 0;
   return (rules.goalColor !== null) === has("goal") &&
-    rules.marked.length === expectedMarks &&
+    rules.marked.length === config.markedCount &&
     (rules.sealedLane !== null) === has("sealed");
 }
 
@@ -105,7 +120,9 @@ function sameState(left, right) {
       tube.every((color, index) => color === right.tubes[lane][index]) &&
       left.hidden[lane].length === right.hidden[lane].length &&
       left.hidden[lane].every((hidden, index) => hidden === right.hidden[lane][index])
-    );
+    ) &&
+    left.holding.length === right.holding.length &&
+    left.holding.every((color, index) => color === right.holding[index]);
 }
 
 function sealedLaneVisible(state, rules) {
@@ -113,14 +130,24 @@ function sealedLaneVisible(state, rules) {
     state.hidden[rules.sealedLane]?.every((hidden) => !hidden) === true;
 }
 
+function validLocationShape(location) {
+  return !!location &&
+    typeof location === "object" &&
+    !Array.isArray(location) &&
+    Object.keys(location).length === 2 &&
+    ["tube", "holding"].includes(location.kind) &&
+    Number.isInteger(location.index) &&
+    location.index >= 0;
+}
+
 function validAuditShape(audit) {
   return Array.isArray(audit) &&
     audit.every((event) => {
       if (!event || typeof event !== "object") return false;
-      if (event.type === "undo" || event.type === "extra") return true;
+      if (event.type === "undo" || event.type === "holding-plus") return true;
       if (event.type === "peek") return Number.isInteger(event.lane);
       return event.type === "move" &&
-        Number.isInteger(event.from) && Number.isInteger(event.to);
+        validLocationShape(event.from) && validLocationShape(event.to);
     });
 }
 
@@ -128,7 +155,7 @@ function replayAudit(saved, initial) {
   let state = cloneState(initial.state);
   let progress = structuredClone(initial.progress);
   let moves = 0;
-  let extra = false;
+  let holdingBoosted = false;
   let undo = 3;
   let peek = 2;
   let snapshots = [];
@@ -141,10 +168,13 @@ function replayAudit(saved, initial) {
         moves >= saved.run.limit
       ) return null;
       snapshots.push({
-        state: cloneState(state), moves, extra, ruleProgress: { ...progress },
+        state: cloneState(state),
+        moves,
+        holdingBoosted,
+        ruleProgress: { ...progress },
       });
       if (snapshots.length > 100) snapshots.shift();
-      const applied = applyRuleMove(
+      const applied = applyRuleTransfer(
         state, event.from, event.to, saved.rules, progress,
       );
       if (!applied) return null;
@@ -157,14 +187,12 @@ function replayAudit(saved, initial) {
       const snapshot = snapshots.pop();
       state = snapshot.state;
       moves = snapshot.moves;
-      extra = snapshot.extra;
+      holdingBoosted = snapshot.holdingBoosted;
       progress = snapshot.ruleProgress;
-    } else if (event.type === "extra") {
-      if (extra) return null;
-      state = cloneState(state);
-      state.tubes.push([]);
-      state.hidden.push([]);
-      extra = true;
+    } else if (event.type === "holding-plus") {
+      if (holdingBoosted) return null;
+      state = addHoldingSlot(state);
+      holdingBoosted = true;
       snapshots = [];
     } else if (event.type === "peek") {
       if (
@@ -181,7 +209,7 @@ function replayAudit(saved, initial) {
       return null;
     }
   }
-  return { state, progress, moves, extra, undo, peek, snapshots };
+  return { state, progress, moves, holdingBoosted, undo, peek, snapshots };
 }
 
 function replayMatchesSaved(saved, initial, requireWin = false) {
@@ -190,7 +218,7 @@ function replayMatchesSaved(saved, initial, requireWin = false) {
     (!requireWin || isWin(replayed.state)) &&
     sameState(replayed.state, saved.state) &&
     replayed.moves === saved.moves &&
-    replayed.extra === saved.extra &&
+    replayed.holdingBoosted === saved.holdingBoosted &&
     replayed.progress.goalAchieved === saved.ruleProgress.goalAchieved &&
     replayed.progress.sealOpened === saved.ruleProgress.sealOpened &&
     replayed.undo === saved.run.undo &&
@@ -205,7 +233,7 @@ function historyMatchesReplay(saved, replayed, config) {
       const expected = replayed.snapshots[index];
       return validSnapshot(snapshot, config, saved.rules, false) &&
         snapshot.moves === expected.moves &&
-        snapshot.extra === expected.extra &&
+        snapshot.holdingBoosted === expected.holdingBoosted &&
         snapshot.ruleProgress.goalAchieved === expected.ruleProgress.goalAchieved &&
         snapshot.ruleProgress.sealOpened === expected.ruleProgress.sealOpened &&
         sameState(snapshot.state, expected.state);
@@ -224,7 +252,7 @@ export function validCompletionAudit(saved) {
     saved.seed > 0xffffffff ||
     !Number.isSafeInteger(saved.moves) ||
     saved.moves <= 0 ||
-    typeof saved.extra !== "boolean" ||
+    typeof saved.holdingBoosted !== "boolean" ||
     !validRun(saved.run) ||
     !validAuditShape(saved.audit)
   ) return false;
@@ -232,7 +260,12 @@ export function validCompletionAudit(saved) {
   if (
     !validRules(saved.rules, config) ||
     !validRuleProgress(saved.ruleProgress, saved.rules) ||
-    !validState(saved.state, config, Number(saved.extra)) ||
+    !validState(
+      saved.state,
+      config,
+      Number(saved.run.revived),
+      Number(saved.holdingBoosted),
+    ) ||
     (!releaseConfig.ads.enabled && (
       saved.run.revived || saved.run.rewards.undo || saved.run.rewards.peek
     ))
@@ -260,7 +293,7 @@ export function validCompletionAudit(saved) {
 export function validSavedGame(saved) {
   if (
     !saved ||
-    saved.version !== 2 ||
+    saved.version !== 3 ||
     !["blind", "practice"].includes(saved.mode) ||
     !Number.isInteger(saved.round) ||
     saved.round < 1 ||
@@ -270,7 +303,7 @@ export function validSavedGame(saved) {
     saved.seed > 0xffffffff ||
     !Number.isSafeInteger(saved.moves) ||
     saved.moves < 0 ||
-    typeof saved.extra !== "boolean" ||
+    typeof saved.holdingBoosted !== "boolean" ||
     !validAttemptId(saved.attemptId) ||
     !validRun(saved.run) ||
     !validAuditShape(saved.audit) ||
@@ -283,7 +316,12 @@ export function validSavedGame(saved) {
     !matchesStageRules(saved.rules, config) ||
     !validRuleProgress(saved.ruleProgress, saved.rules)
   ) return false;
-  if (!validState(saved.state, config, Number(saved.extra) + Number(saved.run.revived))) return false;
+  if (!validState(
+    saved.state,
+    config,
+    Number(saved.run.revived),
+    Number(saved.holdingBoosted),
+  )) return false;
   let initial;
   try {
     initial = generateLevel(saved.mode, saved.seed, saved.round);
