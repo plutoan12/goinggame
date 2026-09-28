@@ -9,7 +9,7 @@
 - 클라이언트: Capacitor 8.5.2, iOS/Android 네이티브 프로젝트 포함
 - 게임: 60단계, 자유 보관칸, 14종 픽셀 동물, 목표·표식·봉인 규칙, 기기 로컬 순위
 
-60단계 릴리스 검증은 웹 자동 검사, 2,400개 생성 보드 재생, Capacitor 동기화, Android Debug APK와 미서명 iOS 기기/시뮬레이터 빌드를 대상으로 합니다. 현재 릴리스에서는 광고를 켜지 않으며 App Store Connect/Google Play 등록·업로드·심사 제출을 진행하지 않습니다. 실제 결과와 산출물은 [IOS-VALIDATION.md](IOS-VALIDATION.md)에 기록합니다.
+60단계 릴리스 검증은 웹 자동 검사, 2,400개 생성 보드 재생, Capacitor 동기화, Android Debug APK·미서명 Release AAB와 미서명 iOS 기기/시뮬레이터 빌드를 대상으로 합니다. 현재 릴리스에서는 광고를 켜지 않으며 App Store Connect/Google Play 등록·업로드·심사 제출을 진행하지 않습니다. 실제 결과와 산출물은 [IOS-VALIDATION.md](IOS-VALIDATION.md)에 기록합니다.
 
 ## 진행·보관칸·저장
 
@@ -36,9 +36,10 @@ Android Studio, JDK 21, SDK Platform 36과 테스트 기기 또는 에뮬레이�
 
 ```sh
 npm run android:debug
+cd android && ./gradlew bundleRelease
 ```
 
-Play 제출용 AAB는 운영자 업로드 키로 생성해야 하며 키와 암호는 저장소에 넣지 않습니다.
+로컬 SDK 경로는 Git에서 제외되는 `android/local.properties`의 `sdk.dir` 또는 `ANDROID_HOME`으로 지정합니다. `bundleRelease`는 기술 검증용 미서명 AAB를 만들며, Play 제출본은 운영자 업로드 키로 서명해야 합니다. 키와 암호는 저장소에 넣지 않습니다.
 
 ## 픽셀 자산
 
@@ -55,6 +56,7 @@ Play 제출용 AAB는 운영자 업로드 키로 생성해야 하며 키와 암�
 ```sh
 npm run native:sync && npm run native:doctor
 npm run android:debug
+cd android && ./gradlew bundleRelease && cd ..
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath release-artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath release-artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build
 ```
@@ -66,7 +68,7 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -dest
 - 주 이용 연령 및 스토어 대상 연령 확정
 - 검토 완료된 개인정보처리방침과 공개 HTTPS URL
 - Apple 배포 Team·프로비저닝 및 App Store Connect 권한
-- Android 운영자 업로드 키·릴리스 AAB 및 Google Play 권한
+- Android 운영자 업로드 키·서명된 릴리스 AAB 및 Google Play 권한
 - 광고를 별도 버전에서 켤 경우 UMP/ATT, 플랫폼 App ID·광고 단위와 스토어 개인정보 표시 재검증
 
 유료 Apple 등록, 운영 계정 변경, 광고 활성화와 스토어 제출은 이번 작업 범위가 아닙니다.

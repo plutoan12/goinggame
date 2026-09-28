@@ -47,6 +47,17 @@ API 36 에뮬레이터를 기동한 뒤 `npm run native:doctor`가 다음 항목
 
 이 Debug APK는 Google Play 제출용 AAB가 아니며 운영자 업로드 키로 서명한 배포본도 아니다.
 
+## Android Release Bundle
+
+`android/local.properties`에 로컬 Android SDK 경로를 복구한 뒤 `./gradlew bundleRelease`가 `BUILD SUCCESSFUL`로 끝났다. 이 파일은 릴리스 코드·리소스 패키징을 확인하기 위한 기술 검증 산출물이다.
+
+- AAB: `android/app/build/outputs/bundle/release/app-release.aab`
+- 크기: 약 11MB
+- SHA-256: `36e512d42ea7c5932fa7546f63ef206bdf95cfe21e83c18a993f09da7cf30eaa`
+- 서명 상태: 미서명(`keytool -printcert -jarfile` 확인)
+
+Google Play 업로드 전에는 운영자 업로드 키를 안전한 로컬 또는 CI 비밀 저장소에 등록해 새로 서명한 AAB를 만들어야 한다. 현재 미서명 파일은 제출할 수 없다.
+
 ## iOS 미서명 빌드와 시뮬레이터
 
 요구된 두 명령 모두 `** BUILD SUCCEEDED **`로 끝났다.
@@ -54,7 +65,9 @@ API 36 에뮬레이터를 기동한 뒤 `npm run native:doctor`가 다음 항목
 - generic iOS: `release-artifacts/ios-derived/Build/Products/Debug-iphoneos/App.app` (약 14MB)
 - generic iOS Simulator: `release-artifacts/ios-derived/Build/Products/Debug-iphonesimulator/App.app` (약 21MB)
 
-iPhone 18 Pro / iOS 27.0 Simulator에 시뮬레이터 앱을 설치하고 `com.onewaycompany.twelveguardians`를 실행했다. 최초 3초 캡처는 배경만 표시했지만 약 18초 뒤 메인 열→보관칸 이동을 안내하는 새 튜토리얼, 보관칸과 60단계 구간 UI가 렌더링됐다. 증거 이미지는 Git에서 제외되는 `.superpowers/sdd/2026-09-28-holding-slots-60-stages/task-7-ios-simulator.png`에 보관했다.
+iPhone 18 Pro / iOS 27.0 Simulator에 시뮬레이터 앱을 설치하고 `com.onewaycompany.twelveguardians`를 실행했다. 최초 3초 캡처는 배경만 표시했지만 약 18초 뒤 메인 열→보관칸 이동을 안내하는 새 튜토리얼, 보관칸과 60단계 구간 UI가 렌더링됐다. 최신 재빌드에서도 실행과 튜토리얼 렌더링을 다시 확인했고 캡처는 Git에서 제외되는 `release-artifacts/store-screenshots/iphone-18-pro-home.png`에 보관했다.
+
+같은 웹 번들의 접근성 트리를 통한 대표 UI 점검에서는 메인 열→보관칸 이동, 새 맨 위 물음표 자동 공개, 보관칸→빈 열 복귀, 이동 수 차감, 되돌리기, `보관칸 +1`, 확인 창을 거친 다시 하기가 모두 기대 상태로 전환됐다. 이 점검은 브라우저 자동화 증거이며 실제 아이폰 손가락 드래그 점검을 대체하지 않는다.
 
 ## 실제 iPhone 상태
 
@@ -77,6 +90,7 @@ iPhone 18 Pro / iOS 27.0 Simulator에 시뮬레이터 앱을 설치하고 `com.o
 git diff --check && npm test && npm run build && npm run release:check
 npm run native:sync && npm run native:doctor
 npm run android:debug
+cd android && ./gradlew bundleRelease && cd ..
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath release-artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath release-artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build
 ```
@@ -88,7 +102,7 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -dest
 - 주 이용 연령 및 스토어 대상 연령 확정
 - 개인정보처리방침 검토 완료와 공개 HTTPS URL
 - Apple 배포용 Team·프로비저닝 및 App Store Connect 권한
-- Android 운영자 업로드 키·릴리스 AAB 및 Google Play 권한
+- Android 운영자 업로드 키·서명된 릴리스 AAB 및 Google Play 권한
 - 스토어 메타데이터, 개인정보 표시와 심사
 - 광고를 별도 릴리스에서 켤 경우 UMP/ATT, 운영 AdMob App ID·광고 단위와 실제 SDK 통신 재검증
 
